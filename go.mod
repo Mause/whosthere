@@ -1,6 +1,6 @@
 module github.com/ramonvermeulen/whosthere
 
-go 1.24.5
+go 1.25
 
 require (
 	github.com/derailed/tcell/v2 v2.3.1-rc.3 // indirect
