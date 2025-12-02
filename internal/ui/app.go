@@ -4,19 +4,20 @@ import (
 	"time"
 
 	"github.com/derailed/tview"
+	"github.com/ramonvermeulen/whosthere/internal/config"
 )
-
-const splashDelay = 1 * time.Second
 
 type App struct {
 	*tview.Application
 	Main *Pages
+	cfg  *config.Config
 }
 
-func NewApp() *App {
+func NewApp(cfg *config.Config) *App {
 	a := App{
 		Application: tview.NewApplication(),
 		Main:        NewPages(),
+		cfg:         cfg,
 	}
 
 	return &a
@@ -28,13 +29,18 @@ func (a *App) Init() error {
 }
 
 func (a *App) Run() error {
-	go func() {
-		<-time.After(splashDelay)
+	if a.cfg != nil && a.cfg.Splash.Enabled {
+		go func(delaySeconds int) {
+			timer := time.NewTimer(time.Duration(delaySeconds) * time.Second)
+			<-timer.C
 
-		a.QueueUpdateDraw(func() {
-			a.Main.SwitchToPage("main")
-		})
-	}()
+			a.QueueUpdateDraw(func() {
+				a.Main.SwitchToPage("main")
+			})
+		}(a.cfg.Splash.Delay)
+	} else {
+		a.Main.SwitchToPage("main")
+	}
 
 	if err := a.Application.Run(); err != nil {
 		return err

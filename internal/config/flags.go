@@ -1,19 +1,12 @@
 package config
 
-const DefaultScanRate = 15
-
-// Flags respresents command line flags for whosthere
+// Flags represents CLI overrides provided by the user.
 type Flags struct {
-	// RefreshRate is the rate (in seconds) at which whosthere will do a network scan.
-	ScanRate *int
+	ConfigFile string
 }
 
 func NewFlags() *Flags {
 	return &Flags{
-		ScanRate: intPtr(DefaultScanRate),
+		ConfigFile: "",
 	}
-}
-
-func intPtr(i int) *int {
-	return &i
 }

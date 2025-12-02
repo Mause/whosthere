@@ -18,15 +18,18 @@ Discover, explore, and understand your Local Area Network in an intuitive way.
 Knock Knock... who's there? 🚪`
 )
 
-var rootCmd = &cobra.Command{
-	Use:   appName,
-	Short: shortAppDesc,
-	Long:  longAppDesc,
-	CompletionOptions: cobra.CompletionOptions{
-		DisableDefaultCmd: true,
-	},
-	RunE: run,
-}
+var (
+	rootCmd = &cobra.Command{
+		Use:   appName,
+		Short: shortAppDesc,
+		Long:  longAppDesc,
+		CompletionOptions: cobra.CompletionOptions{
+			DisableDefaultCmd: true,
+		},
+		RunE: run,
+	}
+	whosthereFlags = config.NewFlags()
+)
 
 func init() {
 	initWhosthereFlags()
@@ -43,7 +46,13 @@ func Execute() {
 func run(*cobra.Command, []string) error {
 	fmt.Println("Welcome to whosthere!")
 
-	app := ui.NewApp()
+	cfg, _, err := config.Load(whosthereFlags.ConfigFile)
+	if err != nil {
+		fmt.Println("Error loading config:", err)
+		fmt.Println("Falling-back to default configuration.")
+	}
+
+	app := ui.NewApp(cfg)
 	if err := app.Init(); err != nil {
 		return err
 	}
@@ -56,12 +65,10 @@ func run(*cobra.Command, []string) error {
 }
 
 func initWhosthereFlags() {
-	whosthereFlags := config.NewFlags()
-	rootCmd.Flags().IntVarP(
-		whosthereFlags.ScanRate,
-		"scan-rate", "s",
-		config.DefaultScanRate,
-		"Specify the default scan rate as integer in seconds.",
+	rootCmd.Flags().StringVarP(
+		&whosthereFlags.ConfigFile,
+		"config-file", "c",
+		"",
+		"Path to config file.",
 	)
-	rootCmd.Flags()
 }

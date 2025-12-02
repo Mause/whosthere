@@ -10,6 +10,7 @@ require (
 require (
 	github.com/derailed/tcell/v2 v2.3.1-rc.3 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
+	github.com/goccy/go-yaml v1.19.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
