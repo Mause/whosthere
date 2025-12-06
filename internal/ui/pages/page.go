@@ -1,4 +1,4 @@
-package views
+package pages
 
 import "github.com/derailed/tview"
 
@@ -6,4 +6,5 @@ import "github.com/derailed/tview"
 type Page interface {
 	GetName() string
 	GetPrimitive() tview.Primitive
+	FocusTarget() tview.Primitive
 }

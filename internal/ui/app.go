@@ -10,7 +10,7 @@ import (
 	"github.com/ramonvermeulen/whosthere/internal/discovery"
 	"github.com/ramonvermeulen/whosthere/internal/discovery/ssdp"
 	"github.com/ramonvermeulen/whosthere/internal/state"
-	"github.com/ramonvermeulen/whosthere/internal/ui/views"
+	"github.com/ramonvermeulen/whosthere/internal/ui/pages"
 )
 
 type App struct {
@@ -31,19 +31,31 @@ func NewApp(cfg *config.Config) *App {
 		state:       state.NewAppState(),
 	}
 
-	mainPage := views.NewMainPage(a.state)
-	splashPage := views.NewSplashPage()
+	detailPage := pages.NewDetailPage(a.state, func() {
+		a.router.NavigateTo(RouteMain)
+	})
+	mainPage := pages.NewMainPage(a.state, func() {
+		if dp, ok := a.router.Page(RouteDetail).(*pages.DetailPage); ok {
+			dp.Refresh()
+		}
+		a.router.NavigateTo(RouteDetail)
+	})
+	splashPage := pages.NewSplashPage()
 
 	a.router.Register(mainPage)
+	a.router.Register(detailPage)
 	a.router.Register(splashPage)
 
 	if a.cfg != nil && a.cfg.Splash.Enabled {
-		a.router.NavigateTo("splash")
+		a.router.NavigateTo(RouteSplash)
 	} else {
-		a.router.NavigateTo("main")
+		a.router.NavigateTo(RouteMain)
 	}
 
 	a.SetRoot(a.router, true)
+	// Ensure focus is on the active page's focus target (e.g., the device table on main page).
+	a.router.FocusCurrent(a.Application)
+
 	return a
 }
 
@@ -54,7 +66,9 @@ func (a *App) Run() error {
 			timer := time.NewTimer(time.Duration(ms) * time.Millisecond)
 			<-timer.C
 			a.QueueUpdateDraw(func() {
-				a.router.NavigateTo("main")
+				a.router.NavigateTo(RouteMain)
+				// After navigating away from the splash, focus the main page's focus target (device table).
+				a.router.FocusCurrent(a.Application)
 			})
 			a.startDiscoveryLoop()
 		}(a.cfg.Splash.Delay)
@@ -69,7 +83,7 @@ func (a *App) startDiscoveryLoop() {
 
 	go func() {
 		for {
-			mp, _ := a.router.Page("main").(*views.MainPage)
+			mp, _ := a.router.Page(RouteMain).(*pages.MainPage)
 			if mp == nil {
 				return
 			}

@@ -1,4 +1,4 @@
-package views
+package pages
 
 import (
 	"fmt"
@@ -42,3 +42,5 @@ func NewSplashPage() *SplashPage {
 func (p *SplashPage) GetName() string { return "splash" }
 
 func (p *SplashPage) GetPrimitive() tview.Primitive { return p.root }
+
+func (p *SplashPage) FocusTarget() tview.Primitive { return p.root }

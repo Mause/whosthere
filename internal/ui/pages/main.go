@@ -1,30 +1,41 @@
-package views
+package pages
 
 import (
 	"github.com/derailed/tview"
 	"github.com/ramonvermeulen/whosthere/internal/state"
 	"github.com/ramonvermeulen/whosthere/internal/ui/components"
-	"github.com/ramonvermeulen/whosthere/internal/ui/table"
 )
 
 // MainPage is the dashboard showing discovered devices.
 type MainPage struct {
 	root        *tview.Flex
-	deviceTable *table.DeviceTable
+	deviceTable *components.DeviceTable
 	spinner     *components.Spinner
 	state       *state.AppState
+
+	onShowDetails func()
 }
 
-func NewMainPage(s *state.AppState) *MainPage {
-	t := table.NewDeviceTable()
+func NewMainPage(s *state.AppState, onShowDetails func()) *MainPage {
+	t := components.NewDeviceTable()
 	spinner := components.NewSpinner()
 
 	mp := &MainPage{
-		root:        nil,
-		deviceTable: t,
-		spinner:     spinner,
-		state:       s,
+		root:          nil, // set below
+		deviceTable:   t,
+		spinner:       spinner,
+		state:         s,
+		onShowDetails: onShowDetails,
 	}
+
+	t.SetSelectedFunc(func(row, col int) {
+		ip := mp.deviceTable.SelectedIP()
+		if ip == "" || mp.onShowDetails == nil {
+			return
+		}
+		mp.state.SetSelectedIP(ip)
+		mp.onShowDetails()
+	})
 
 	main := tview.NewFlex().SetDirection(tview.FlexRow)
 	main.AddItem(tview.NewTextView().SetText("whosthere").SetTextAlign(tview.AlignCenter), 0, 1, false)
@@ -32,7 +43,7 @@ func NewMainPage(s *state.AppState) *MainPage {
 
 	status := tview.NewFlex().SetDirection(tview.FlexColumn)
 	status.AddItem(mp.spinner.View(), 0, 1, false)
-	status.AddItem(tview.NewTextView().SetText("jK up/down - gG top/bottom").SetTextAlign(tview.AlignRight), 0, 1, false)
+	status.AddItem(tview.NewTextView().SetText("j/k: up/down  g/G: top/bottom  Enter: details").SetTextAlign(tview.AlignRight), 0, 1, false)
 	main.AddItem(status, 1, 0, false)
 
 	mp.root = main
@@ -43,13 +54,11 @@ func (p *MainPage) GetName() string { return "main" }
 
 func (p *MainPage) GetPrimitive() tview.Primitive { return p.root }
 
+func (p *MainPage) FocusTarget() tview.Primitive { return p.deviceTable }
+
 func (p *MainPage) Spinner() *components.Spinner { return p.spinner }
 
-// RefreshFromState reloads the device table from the shared AppState.
 func (p *MainPage) RefreshFromState() {
 	devices := p.state.DevicesSnapshot()
 	p.deviceTable.ReplaceAll(devices)
 }
-
-// Refresh forces a redraw of the devices table.
-func (p *MainPage) Refresh() { p.RefreshFromState() }

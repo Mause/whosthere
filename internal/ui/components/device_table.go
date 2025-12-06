@@ -1,4 +1,4 @@
-package table
+package components
 
 import (
 	"fmt"
@@ -20,7 +20,8 @@ type DeviceTable struct {
 func NewDeviceTable() *DeviceTable {
 	t := &DeviceTable{Table: tview.NewTable(), devices: map[string]discovery.Device{}}
 	t.SetBorder(true).SetTitle("Devices")
-	t.SetFixed(1, 0)
+	t.SetSelectable(true, false)
+	t.Select(0, 0)
 	t.refresh()
 	return t
 }
@@ -58,6 +59,34 @@ func (dt *DeviceTable) ReplaceAll(list []discovery.Device) {
 		dt.devices[d.IP.String()] = d
 	}
 	dt.refresh()
+}
+
+// SelectedIP returns the IP for the currently selected row, if any.
+func (dt *DeviceTable) SelectedIP() string {
+	row, _ := dt.GetSelection()
+	if row <= 0 {
+		return ""
+	}
+	cell := dt.GetCell(row, 0)
+	if cell == nil {
+		return ""
+	}
+	return cell.Text
+}
+
+// SelectFirst selects the first data row below the header, if any.
+func (dt *DeviceTable) SelectFirst() {
+	if dt.GetRowCount() > 1 {
+		dt.Select(1, 0)
+	}
+}
+
+// SelectLast selects the last data row.
+func (dt *DeviceTable) SelectLast() {
+	rows := dt.GetRowCount()
+	if rows > 1 {
+		dt.Select(rows-1, 0)
+	}
 }
 
 func (dt *DeviceTable) refresh() {
