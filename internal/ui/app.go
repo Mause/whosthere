@@ -9,6 +9,7 @@ import (
 	"github.com/ramonvermeulen/whosthere/internal/config"
 	"github.com/ramonvermeulen/whosthere/internal/discovery"
 	"github.com/ramonvermeulen/whosthere/internal/discovery/arp"
+	"github.com/ramonvermeulen/whosthere/internal/discovery/mdns"
 	"github.com/ramonvermeulen/whosthere/internal/discovery/ssdp"
 	"github.com/ramonvermeulen/whosthere/internal/oui"
 	"github.com/ramonvermeulen/whosthere/internal/state"
@@ -40,6 +41,7 @@ func NewApp(cfg *config.Config, ouiDB *oui.Registry) *App {
 	scanners := []discovery.Scanner{
 		&ssdp.Scanner{},
 		&arp.Scanner{},
+		&mdns.Scanner{},
 	}
 	engine := discovery.NewEngine(
 		scanners,

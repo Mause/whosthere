@@ -12,6 +12,7 @@ import (
 
 	"github.com/ramonvermeulen/whosthere/internal/discovery"
 	"github.com/ramonvermeulen/whosthere/internal/discovery/arp"
+	"github.com/ramonvermeulen/whosthere/internal/discovery/mdns"
 	"github.com/ramonvermeulen/whosthere/internal/discovery/ssdp"
 	"github.com/ramonvermeulen/whosthere/internal/logging"
 	"github.com/ramonvermeulen/whosthere/internal/oui"
@@ -51,11 +52,13 @@ Examples:
 			switch r {
 			case "", "all":
 				// add all
-				scList = append(scList, &ssdp.Scanner{}, &arp.Scanner{})
+				scList = append(scList, &ssdp.Scanner{}, &arp.Scanner{}, &mdns.Scanner{})
 			case "ssdp":
 				scList = append(scList, &ssdp.Scanner{})
 			case "arp":
 				scList = append(scList, &arp.Scanner{})
+			case "mdns":
+				scList = append(scList, &mdns.Scanner{})
 			default:
 				return fmt.Errorf("unknown scanner: %s", r)
 			}
