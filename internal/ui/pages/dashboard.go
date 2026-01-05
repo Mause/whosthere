@@ -22,7 +22,6 @@ type DashboardPage struct {
 	filterView *tview.TextView
 	statusRow  tview.Primitive
 	helpText   *tview.TextView
-	baseHelp   string
 }
 
 func NewDashboardPage(s *state.AppState, navigate func(route string)) *DashboardPage {
@@ -41,8 +40,9 @@ func NewDashboardPage(s *state.AppState, navigate func(route string)) *Dashboard
 
 	filterView := tview.NewTextView().SetTextAlign(tview.AlignLeft)
 	status := tview.NewFlex().SetDirection(tview.FlexColumn)
-	helpMsg := "j/k: up/down - g/G: top/bottom - Enter: details"
-	helpText := tview.NewTextView().SetText(helpMsg).SetTextAlign(tview.AlignRight)
+	helpText := tview.NewTextView().
+		SetText("j/k: up/down - g/G: top/bottom - Enter: details").
+		SetTextAlign(tview.AlignRight)
 	status.AddItem(spinner.View(), 0, 1, false)
 	status.AddItem(helpText, 0, 2, false)
 
@@ -55,7 +55,6 @@ func NewDashboardPage(s *state.AppState, navigate func(route string)) *Dashboard
 		filterView:  filterView,
 		statusRow:   status,
 		helpText:    helpText,
-		baseHelp:    helpMsg,
 	}
 
 	// Base layout: header + table already added; footer managed dynamically.
@@ -108,18 +107,6 @@ func (p *DashboardPage) updateFooter(showFilter bool) {
 	p.Flex.AddItem(p.statusRow, 1, 0, false)
 }
 
-// updateHelp shows the active filter inline with the status help without moving layout.
-func (p *DashboardPage) updateHelp(active bool, filter string) {
-	if p.helpText == nil {
-		return
-	}
-	if active && filter != "" {
-		p.helpText.SetText(p.baseHelp + " | Filter: /" + filter)
-		return
-	}
-	p.helpText.SetText(p.baseHelp)
-}
-
 // handleSearchStatus updates footer visibility and help text based on table search state.
 func (p *DashboardPage) handleSearchStatus(status components.SearchStatus) {
 	if p.filterView != nil {
@@ -127,17 +114,4 @@ func (p *DashboardPage) handleSearchStatus(status components.SearchStatus) {
 		p.filterView.SetText(status.Text)
 	}
 	p.updateFooter(status.Showing)
-	p.updateHelp(status.Active, status.Filter)
-}
-
-// navigateSelected replicates the table's selected handler for Enter.
-func (p *DashboardPage) navigateSelected() {
-	ip := p.deviceTable.SelectedIP()
-	if ip == "" {
-		return
-	}
-	p.state.SetSelectedIP(ip)
-	if p.navigate != nil {
-		p.navigate(navigation.RouteDetail)
-	}
 }
