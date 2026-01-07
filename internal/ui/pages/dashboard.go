@@ -5,6 +5,7 @@ import (
 	"github.com/ramonvermeulen/whosthere/internal/state"
 	"github.com/ramonvermeulen/whosthere/internal/ui/components"
 	"github.com/ramonvermeulen/whosthere/internal/ui/navigation"
+	"github.com/ramonvermeulen/whosthere/internal/ui/theme"
 	"github.com/rivo/tview"
 )
 
@@ -19,6 +20,7 @@ type DashboardPage struct {
 
 	navigate func(route string)
 
+	header    *components.Header
 	filterBar *components.FilterBar
 	statusBar *components.StatusBar
 	version   string
@@ -28,12 +30,14 @@ func NewDashboardPage(s *state.AppState, navigate func(route string), version st
 	t := components.NewDeviceTable()
 	statusBar := components.NewStatusBar()
 	statusBar.Spinner().SetSuffix(" Scanning...")
-	statusBar.SetHelp("j/k: up/down - g/G: top/bottom - Enter: details")
+	statusBar.SetHelp("j/k: up/down - g/G: top/bottom - Enter: details - t: theme")
 
 	main := tview.NewFlex().SetDirection(tview.FlexRow)
+	theme.RegisterPrimitive(main) // Register main flex
+
 	header := components.NewHeader(version)
-	main.AddItem(header, 0, 1, false)
-	main.AddItem(t, 0, 18, true)
+	main.AddItem(header, 1, 0, false)
+	main.AddItem(t, 0, 1, true)
 
 	filterBar := components.NewFilterBar()
 
@@ -43,6 +47,7 @@ func NewDashboardPage(s *state.AppState, navigate func(route string), version st
 		spinner:     statusBar.Spinner(),
 		state:       s,
 		navigate:    navigate,
+		header:      header,
 		filterBar:   filterBar,
 		statusBar:   statusBar,
 		version:     version,

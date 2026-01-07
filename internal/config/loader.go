@@ -139,3 +139,23 @@ scanners:
 		cfg.Scanners.ARP.Enabled,
 	))
 }
+
+// Save writes the config to the specified path (or resolves the default path if empty).
+func Save(cfg *Config, pathOverride string) error {
+	if cfg == nil {
+		return ErrConfigNil
+	}
+
+	resolvedPath, err := resolveConfigPath(pathOverride)
+	if err != nil {
+		return fmt.Errorf("resolve config path: %w", err)
+	}
+
+	data := renderDefaultConfigFile(cfg)
+
+	if err := os.WriteFile(resolvedPath, data, 0o644); err != nil {
+		return fmt.Errorf("write config: %w", err)
+	}
+
+	return nil
+}

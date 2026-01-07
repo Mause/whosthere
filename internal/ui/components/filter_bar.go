@@ -2,6 +2,7 @@ package components
 
 import (
 	"github.com/gdamore/tcell/v2"
+	"github.com/ramonvermeulen/whosthere/internal/ui/theme"
 	"github.com/rivo/tview"
 )
 
@@ -14,6 +15,7 @@ func NewFilterBar() *FilterBar {
 	fv := tview.NewTextView().
 		SetDynamicColors(true).
 		SetTextAlign(tview.AlignLeft)
+	theme.RegisterPrimitive(fv) // Register with theme manager
 	return &FilterBar{TextView: fv}
 }
 

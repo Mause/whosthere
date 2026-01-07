@@ -1,6 +1,9 @@
 package components
 
-import "github.com/rivo/tview"
+import (
+	"github.com/ramonvermeulen/whosthere/internal/ui/theme"
+	"github.com/rivo/tview"
+)
 
 // StatusBar combines a Spinner with a right-aligned help text into a single flex row.
 type StatusBar struct {
@@ -14,10 +17,14 @@ func NewStatusBar() *StatusBar {
 	help := tview.NewTextView().
 		SetTextAlign(tview.AlignRight)
 
+	theme.RegisterPrimitive(help) // Register help text with theme manager
+
 	row := tview.NewFlex().
 		SetDirection(tview.FlexColumn).
 		AddItem(sp.View(), 0, 1, false).
 		AddItem(help, 0, 2, false)
+
+	theme.RegisterPrimitive(row) // Register flex container with theme manager
 
 	return &StatusBar{
 		root:    row,

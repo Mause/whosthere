@@ -1,6 +1,9 @@
 package components
 
-import "github.com/rivo/tview"
+import (
+	"github.com/ramonvermeulen/whosthere/internal/ui/theme"
+	"github.com/rivo/tview"
+)
 
 // Header is a simple reusable header bar for pages.
 // It renders the app title and, optionally, a version string.
@@ -19,5 +22,9 @@ func NewHeader(version string) *Header {
 	tv := tview.NewTextView().
 		SetText(text).
 		SetTextAlign(tview.AlignCenter)
+
+	// Register with theme manager
+	theme.RegisterPrimitive(tv)
+
 	return &Header{TextView: tv}
 }

@@ -2,8 +2,10 @@ package ui
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/gdamore/tcell/v2"
 	"github.com/ramonvermeulen/whosthere/internal/config"
 	"github.com/ramonvermeulen/whosthere/internal/discovery"
 	"github.com/ramonvermeulen/whosthere/internal/discovery/arp"
@@ -11,6 +13,7 @@ import (
 	"github.com/ramonvermeulen/whosthere/internal/discovery/ssdp"
 	"github.com/ramonvermeulen/whosthere/internal/oui"
 	"github.com/ramonvermeulen/whosthere/internal/state"
+	"github.com/ramonvermeulen/whosthere/internal/ui/components"
 	"github.com/ramonvermeulen/whosthere/internal/ui/navigation"
 	"github.com/ramonvermeulen/whosthere/internal/ui/pages"
 	"github.com/ramonvermeulen/whosthere/internal/ui/theme"
@@ -29,20 +32,23 @@ type App interface {
 
 // tui is the concrete implementation of the App interface.
 type tui struct {
-	app     *tview.Application
-	cfg     *config.Config
-	router  *navigation.Router
-	engine  *discovery.Engine
-	state   *state.AppState
-	version string
+	app          *tview.Application
+	cfg          *config.Config
+	router       *navigation.Router
+	engine       *discovery.Engine
+	state        *state.AppState
+	version      string
+	themeManager *theme.Manager
 }
 
 // NewApp constructs a new TUI instance using a builder-style initialization.
 func NewApp(cfg *config.Config, ouiDB *oui.Registry, version string) App {
+	app := tview.NewApplication()
 	t := &tui{
-		app:     tview.NewApplication(),
-		cfg:     cfg,
-		version: version,
+		app:          app,
+		cfg:          cfg,
+		version:      version,
+		themeManager: theme.NewManager(app),
 	}
 
 	return t.
@@ -62,11 +68,15 @@ func (t *tui) UIQueue() func(func()) {
 
 // initializeTheme resolves and applies the configured theme.
 func (t *tui) initializeTheme() *tui {
-	var themeCfg *config.ThemeConfig
-	if t.cfg != nil {
-		themeCfg = &t.cfg.Theme
+	var themeName string
+	if t.cfg != nil && t.cfg.Theme.Name != "" {
+		themeName = t.cfg.Theme.Name
+	} else {
+		themeName = config.DefaultThemeName
 	}
-	_ = theme.Resolve(themeCfg)
+
+	// Set the initial theme through the manager
+	t.themeManager.SetTheme(themeName)
 	return t
 }
 
@@ -148,12 +158,81 @@ func (t *tui) buildLayout() *tui {
 
 // bindEvents is a hook for global keybindings or input capture.
 func (t *tui) bindEvents() *tui {
-	// No global bindings yet; placeholder for future enhancements.
+	// Set up global input capture for theme picker
+	t.app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Rune() == 't' {
+			t.showThemePicker()
+			return nil
+		}
+		return event
+	})
 	return t
+}
+
+// showThemePicker displays the theme picker modal.
+func (t *tui) showThemePicker() {
+	picker := components.NewThemePicker(t.themeManager)
+
+	// Register the picker itself with the theme manager so it updates during preview
+	t.themeManager.Register(picker)
+	closeModal := func() {
+		t.router.RemovePage("theme-picker-modal")
+		t.router.FocusCurrent(t.app)
+	}
+
+	picker.OnSelect(func(themeName string) {
+		// Theme is already applied during preview, just close the modal
+		closeModal()
+	})
+
+	picker.OnSave(func(themeName string) {
+		// Save the theme to config and close modal
+		if err := t.saveThemeToConfig(themeName); err == nil {
+			closeModal()
+		}
+	})
+
+	picker.OnCancel(func() {
+		// Close modal (theme restoration handled by picker)
+		closeModal()
+	})
+
+	picker.Show()
+
+	// Create a centered modal layout with semi-transparent background effect
+	modal := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexColumn).
+			AddItem(nil, 0, 1, false).
+			AddItem(picker.GetList(), 80, 0, true).
+			AddItem(nil, 0, 1, false), 0, 1, true).
+		AddItem(nil, 0, 1, false)
+
+	// Add as an overlay page on top of current view
+	t.router.AddPage("theme-picker-modal", modal, true, true)
+	t.app.SetFocus(picker.GetListPrimitive())
+}
+
+// saveThemeToConfig updates the config with the new theme and saves it to disk.
+func (t *tui) saveThemeToConfig(themeName string) error {
+	if t.cfg == nil {
+		return fmt.Errorf("config not initialized")
+	}
+
+	// Update the theme name in the config
+	t.cfg.Theme.Name = themeName
+
+	// Save the config to disk
+	if err := config.Save(t.cfg, ""); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	return nil
 }
 
 // Run starts the TUI event loop and background workers.
 func (t *tui) Run() error {
+
 	if t.cfg != nil && t.cfg.Splash.Enabled {
 		go func(delay time.Duration) {
 			time.Sleep(delay)

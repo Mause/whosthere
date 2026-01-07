@@ -10,6 +10,7 @@ import (
 	"github.com/ramonvermeulen/whosthere/internal/state"
 	"github.com/ramonvermeulen/whosthere/internal/ui/components"
 	"github.com/ramonvermeulen/whosthere/internal/ui/navigation"
+	"github.com/ramonvermeulen/whosthere/internal/ui/theme"
 	"github.com/rivo/tview"
 )
 
@@ -18,26 +19,42 @@ var _ navigation.Page = &DetailPage{}
 // DetailPage shows detailed information about the currently selected device.
 type DetailPage struct {
 	*tview.Flex
-	info  *tview.TextView
-	state *state.AppState
+	info      *tview.TextView
+	state     *state.AppState
+	header    *components.Header
+	statusBar *components.StatusBar
 
 	navigate func(route string)
 }
 
 func NewDetailPage(s *state.AppState, navigate func(route string), uiQueue func(func()), version string) *DetailPage {
 	main := tview.NewFlex().SetDirection(tview.FlexRow)
+	theme.RegisterPrimitive(main) // Register main flex
+
 	header := components.NewHeader(version)
 	main.AddItem(header, 0, 1, false)
 
 	info := tview.NewTextView().SetDynamicColors(true).SetWrap(true)
-	info.SetBorder(true).SetTitle("Details").SetBorderColor(tview.Styles.BorderColor).SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+	info.SetBorder(true).
+		SetTitle("Details").
+		SetTitleColor(tview.Styles.TitleColor).
+		SetBorderColor(tview.Styles.BorderColor).
+		SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+	theme.RegisterPrimitive(info) // Register info view
 	main.AddItem(info, 0, 18, true)
 
 	statusBar := components.NewStatusBar()
 	statusBar.SetHelp("Esc/q: Back")
 	main.AddItem(statusBar.Primitive(), 1, 0, false)
 
-	p := &DetailPage{Flex: main, state: s, info: info, navigate: navigate}
+	p := &DetailPage{
+		Flex:      main,
+		state:     s,
+		info:      info,
+		header:    header,
+		statusBar: statusBar,
+		navigate:  navigate,
+	}
 
 	info.SetInputCapture(handleInput(p))
 	s.AddListener(func(d discovery.Device) {
@@ -129,4 +146,5 @@ func sortedKeys[T any](m map[string]T) []string {
 	}
 	sort.Strings(keys)
 	return keys
+
 }

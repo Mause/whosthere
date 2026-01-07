@@ -317,14 +317,6 @@ func parseColor(s string) *tcell.Color {
 	return &c
 }
 
-// Register adds or replaces a theme in the registry.
-func Register(name string, th *tview.Theme) {
-	if th == nil {
-		return
-	}
-	registry[strings.ToLower(strings.TrimSpace(name))] = *th
-}
-
 // Names returns the currently registered theme names (built-ins plus any custom registrations).
 func Names() []string {
 	names := make([]string, 0, len(registry))
@@ -333,4 +325,15 @@ func Names() []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+// Get retrieves a theme by name from the registry. Falls back to default if not found.
+func Get(name string) tview.Theme {
+	name = strings.ToLower(strings.TrimSpace(name))
+	th, ok := registry[name]
+	if !ok {
+		logging.L().Warn("theme not found, falling back to default", zap.String("name", name))
+		th = registry[config.DefaultThemeName]
+	}
+	return th
 }

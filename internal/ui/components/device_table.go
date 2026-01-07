@@ -9,6 +9,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/ramonvermeulen/whosthere/internal/discovery"
+	"github.com/ramonvermeulen/whosthere/internal/ui/theme"
 	"github.com/rivo/tview"
 	"go.uber.org/zap"
 )
@@ -43,8 +44,11 @@ func NewDeviceTable() *DeviceTable {
 	t.
 		SetBorder(true).
 		SetTitle("Devices").
+		SetTitleColor(tview.Styles.TitleColor).
 		SetBorderColor(tview.Styles.BorderColor).
 		SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+
+	theme.RegisterPrimitive(t.Table) // Register with theme manager
 
 	t.SetFixed(1, 0)
 	t.SetSelectable(true, false)
@@ -71,8 +75,7 @@ func (dt *DeviceTable) handleSearchKey(ev *tcell.EventKey) *tcell.EventKey {
 	switch ev.Key() {
 	case tcell.KeyEnter:
 		dt.searching = false
-		// this allows the Enter key to propagate and trigger selection
-		return ev
+		return nil
 	case tcell.KeyEsc:
 		dt.searching = false
 		return nil
