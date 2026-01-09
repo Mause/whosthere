@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/derailed/tview"
+	"github.com/gdamore/tcell/v2"
 	"github.com/ramonvermeulen/whosthere/internal/config"
 	"github.com/ramonvermeulen/whosthere/internal/discovery"
 	"github.com/ramonvermeulen/whosthere/internal/discovery/arp"
@@ -15,6 +15,7 @@ import (
 	"github.com/ramonvermeulen/whosthere/internal/ui/navigation"
 	"github.com/ramonvermeulen/whosthere/internal/ui/pages"
 	"github.com/ramonvermeulen/whosthere/internal/ui/theme"
+	"github.com/rivo/tview"
 )
 
 const (
@@ -22,130 +23,165 @@ const (
 	refreshInterval = 1 * time.Second
 )
 
-type App struct {
-	*tview.Application
-
-	cfg    *config.Config
-	router *navigation.Router
-	engine *discovery.Engine
-	state  *state.AppState
+// App is the public interface for running the TUI.
+type App interface {
+	Run() error
 }
 
-func (a *App) UIQueue() func(func()) {
-	return func(f func()) { a.QueueUpdateDraw(f) }
+// tui is the concrete implementation of the App interface.
+type tui struct {
+	app          *tview.Application
+	cfg          *config.Config
+	router       *navigation.Router
+	engine       *discovery.Engine
+	state        *state.AppState
+	version      string
+	themeManager *theme.Manager
 }
 
-func NewApp(cfg *config.Config, ouiDB *oui.Registry) *App {
-	var themeCfg *config.ThemeConfig
+// NewApp constructs a new TUI instance.
+func NewApp(cfg *config.Config, ouiDB *oui.Registry, version string) App {
+	app := tview.NewApplication()
+
+	appState := state.NewAppState()
+
+	t := &tui{
+		app:          app,
+		cfg:          cfg,
+		version:      version,
+		themeManager: theme.Init(app, cfg),
+		state:        appState,
+		router:       navigation.NewRouter(appState),
+	}
+
+	themeName := config.DefaultThemeName
+	if cfg != nil && cfg.Theme.Name != "" {
+		themeName = cfg.Theme.Name
+	}
+	t.themeManager.SetTheme(themeName)
+
 	if cfg != nil {
-		themeCfg = &cfg.Theme
-	}
-	_ = theme.FromConfig(themeCfg)
-	sweeper := arp.NewSweeper(5*time.Minute, time.Minute)
-	scanners := []discovery.Scanner{}
-	if cfg.Scanners.SSDP.Enabled {
-		scanners = append(scanners, &ssdp.Scanner{})
-	}
-	if cfg.Scanners.ARP.Enabled {
-		scanners = append(scanners, arp.NewScanner(sweeper))
-	}
-	if cfg.Scanners.MDNS.Enabled {
-		scanners = append(scanners, &mdns.Scanner{})
-	}
-	engine := discovery.NewEngine(
-		scanners,
-		discovery.WithTimeout(cfg.ScanDuration),
-		discovery.WithOUIRegistry(ouiDB),
-		discovery.WithSubnetHook(sweeper.Trigger),
-	)
+		sweeper := arp.NewSweeper(5*time.Minute, time.Minute)
+		var scanners []discovery.Scanner
 
-	a := &App{
-		Application: tview.NewApplication(),
-		cfg:         cfg,
-		router:      navigation.NewRouter(),
-		engine:      engine,
-		state:       state.NewAppState(),
+		if cfg.Scanners.SSDP.Enabled {
+			scanners = append(scanners, &ssdp.Scanner{})
+		}
+		if cfg.Scanners.ARP.Enabled {
+			scanners = append(scanners, arp.NewScanner(sweeper))
+		}
+		if cfg.Scanners.MDNS.Enabled {
+			scanners = append(scanners, &mdns.Scanner{})
+		}
+
+		t.engine = discovery.NewEngine(
+			scanners,
+			discovery.WithTimeout(cfg.ScanDuration),
+			discovery.WithOUIRegistry(ouiDB),
+			discovery.WithSubnetHook(sweeper.Trigger),
+		)
 	}
 
-	dashboardPage := pages.NewDashboardPage(a.state, a.router.NavigateTo)
-	detailPage := pages.NewDetailPage(a.state, a.router.NavigateTo, a.UIQueue())
-	splashPage := pages.NewSplashPage()
+	dashboardPage := pages.NewDashboardPage(appState, t.router, version)
+	detailPage := pages.NewDetailPage(appState, t.router, version)
+	splashPage := pages.NewSplashPage(version)
+	themePickerPage := pages.NewThemePickerModalPage(t.router)
 
-	a.router.Register(dashboardPage)
-	a.router.Register(detailPage)
-	a.router.Register(splashPage)
+	t.router.Register(dashboardPage)
+	t.router.Register(detailPage)
+	t.router.Register(splashPage)
+	t.router.Register(themePickerPage)
 
-	if a.cfg != nil && a.cfg.Splash.Enabled {
-		a.router.NavigateTo(navigation.RouteSplash)
+	if cfg != nil && cfg.Splash.Enabled {
+		t.router.NavigateTo(navigation.RouteSplash)
 	} else {
-		a.router.NavigateTo(navigation.RouteDashboard)
+		t.router.NavigateTo(navigation.RouteDashboard)
 	}
 
-	a.SetRoot(a.router, true)
-	a.router.FocusCurrent(a.Application)
+	app.SetRoot(t.router, true)
+	t.router.FocusCurrent(app)
 
-	return a
+	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyCtrlT {
+			t.router.ShowOverlay(navigation.RouteThemePicker)
+			return nil
+		}
+		return event
+	})
+
+	return t
 }
 
-func (a *App) Run() error {
-	if a.cfg != nil && a.cfg.Splash.Enabled {
+// UIQueue returns a helper suitable for components that need to queue UI updates.
+func (t *tui) UIQueue() func(func()) {
+	return func(f func()) { t.app.QueueUpdateDraw(f) }
+}
+
+// Run starts the TUI event loop and background workers.
+func (t *tui) Run() error {
+	t.startBackgroundTasks()
+	if t.cfg != nil && t.cfg.Splash.Enabled {
 		go func(delay time.Duration) {
 			time.Sleep(delay)
-			a.QueueUpdateDraw(func() {
-				a.router.NavigateTo(navigation.RouteDashboard)
-				a.router.FocusCurrent(a.Application)
-				a.startBackgroundTasks()
+			t.app.QueueUpdateDraw(func() {
+				if t.router != nil {
+					t.router.NavigateTo(navigation.RouteDashboard)
+					t.router.FocusCurrent(t.app)
+				}
 			})
-		}(a.cfg.Splash.Delay)
-	} else {
-		a.startBackgroundTasks()
+		}(t.cfg.Splash.Delay)
 	}
-	return a.Application.Run()
+	return t.app.Run()
 }
 
 // startBackgroundTasks launches app-wide background workers (UI refresh, discovery scanning).
-func (a *App) startBackgroundTasks() {
-	a.startDashboardRefreshLoop()
-	a.startDiscoveryScanLoop()
+func (t *tui) startBackgroundTasks() {
+	t.startUIRefreshLoop()
+	t.startDiscoveryScanLoop()
 }
 
-// startDashboardRefreshLoop periodically refreshes the dashboard view from state.
-func (a *App) startDashboardRefreshLoop() {
+// startUIRefreshLoop periodically refreshes the current page to show updated state.
+func (t *tui) startUIRefreshLoop() {
+	if t.router == nil {
+		return
+	}
 	go func() {
 		ticker := time.NewTicker(refreshInterval)
 		defer ticker.Stop()
 		for range ticker.C {
-			if a.router.Current() != navigation.RouteDashboard {
-				continue
+			currentRoute := t.router.Current()
+			currentPage := t.router.Page(currentRoute)
+
+			// Refresh the current page if it implements the Refresh method
+			if refreshable, ok := currentPage.(interface{ Refresh() }); ok {
+				t.app.QueueUpdateDraw(func() { refreshable.Refresh() })
 			}
-			mp, _ := a.router.Page(navigation.RouteDashboard).(*pages.DashboardPage)
-			if mp == nil {
-				continue
-			}
-			a.QueueUpdateDraw(func() { mp.RefreshFromState() })
 		}
 	}()
 }
 
 // startDiscoveryScanLoop runs periodic network discovery and controls the spinner around scans.
-func (a *App) startDiscoveryScanLoop() {
+func (t *tui) startDiscoveryScanLoop() {
+	if t.cfg == nil || t.engine == nil || t.router == nil || t.state == nil {
+		return
+	}
 	go func() {
-		ticker := time.NewTicker(a.cfg.ScanInterval)
+		ticker := time.NewTicker(t.cfg.ScanInterval)
 		defer ticker.Stop()
 
 		doScan := func() {
-			mp, _ := a.router.Page(navigation.RouteDashboard).(*pages.DashboardPage)
+			mp, _ := t.router.Page(navigation.RouteDashboard).(*pages.DashboardPage)
 			if mp == nil {
 				return
 			}
-			mp.Spinner().Start(a.UIQueue())
+			mp.Spinner().Start(t.UIQueue())
 			ctx := context.Background()
-			cctx, cancel := context.WithTimeout(ctx, a.cfg.ScanDuration)
-			_, _ = a.engine.Stream(cctx, func(d discovery.Device) {
-				a.state.UpsertDevice(&d)
+			cctx, cancel := context.WithTimeout(ctx, t.cfg.ScanDuration)
+			_, _ = t.engine.Stream(cctx, func(d discovery.Device) {
+				t.state.UpsertDevice(&d)
 			})
 			cancel()
-			mp.Spinner().Stop(a.UIQueue())
+			mp.Spinner().Stop(t.UIQueue())
 		}
 
 		doScan()

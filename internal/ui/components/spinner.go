@@ -3,7 +3,8 @@ package components
 import (
 	"time"
 
-	"github.com/derailed/tview"
+	"github.com/ramonvermeulen/whosthere/internal/ui/theme"
+	"github.com/rivo/tview"
 )
 
 type Spinner struct {
@@ -15,6 +16,7 @@ type Spinner struct {
 
 func NewSpinner() *Spinner {
 	tv := tview.NewTextView().SetText(" ").SetTextAlign(tview.AlignLeft)
+	theme.RegisterPrimitive(tv)
 	return &Spinner{view: tv, stop: make(chan struct{}, 1), suffix: ""}
 }
 

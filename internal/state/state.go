@@ -11,25 +11,15 @@ import (
 type AppState struct {
 	mu sync.RWMutex
 
-	devices    map[string]discovery.Device
-	selectedIP string
-	listeners  []func(discovery.Device)
+	devices     map[string]discovery.Device
+	selectedIP  string
+	currentPage string
 }
 
 func NewAppState() *AppState {
 	return &AppState{
 		devices: make(map[string]discovery.Device),
 	}
-}
-
-// AddListener registers a callback invoked when a device is upserted.
-func (s *AppState) AddListener(fn func(discovery.Device)) {
-	if fn == nil {
-		return
-	}
-	s.mu.Lock()
-	s.listeners = append(s.listeners, fn)
-	s.mu.Unlock()
 }
 
 // UpsertDevice merges a device into the canonical device map.
@@ -43,18 +33,13 @@ func (s *AppState) UpsertDevice(d *discovery.Device) {
 	}
 
 	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if existing, ok := s.devices[key]; ok {
 		existing.Merge(d)
 		s.devices[key] = existing
 	} else {
 		s.devices[key] = *d
-	}
-	updated := s.devices[key]
-	listeners := append([]func(discovery.Device){}, s.listeners...)
-	s.mu.Unlock()
-
-	for _, fn := range listeners {
-		fn(updated)
 	}
 }
 
@@ -94,4 +79,18 @@ func (s *AppState) SelectedIP() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.selectedIP
+}
+
+// SetCurrentPage sets the current page name.
+func (s *AppState) SetCurrentPage(page string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.currentPage = page
+}
+
+// CurrentPage returns the current page name.
+func (s *AppState) CurrentPage() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.currentPage
 }

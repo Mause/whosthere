@@ -1,11 +1,12 @@
 package pages
 
 import (
-	"github.com/derailed/tcell/v2"
-	"github.com/derailed/tview"
+	"github.com/gdamore/tcell/v2"
 	"github.com/ramonvermeulen/whosthere/internal/state"
 	"github.com/ramonvermeulen/whosthere/internal/ui/components"
 	"github.com/ramonvermeulen/whosthere/internal/ui/navigation"
+	"github.com/ramonvermeulen/whosthere/internal/ui/theme"
+	"github.com/rivo/tview"
 )
 
 var _ navigation.Page = &DashboardPage{}
@@ -16,48 +17,43 @@ type DashboardPage struct {
 	deviceTable *components.DeviceTable
 	spinner     *components.Spinner
 	state       *state.AppState
+	router      *navigation.Router
 
-	navigate func(route string)
-
-	filterView *tview.TextView
-	statusRow  tview.Primitive
-	helpText   *tview.TextView
+	header    *components.Header
+	filterBar *components.FilterBar
+	statusBar *components.StatusBar
+	version   string
 }
 
-func NewDashboardPage(s *state.AppState, navigate func(route string)) *DashboardPage {
+func NewDashboardPage(s *state.AppState, router *navigation.Router, version string) *DashboardPage {
+	header := components.NewHeader(version)
 	t := components.NewDeviceTable()
-	spinner := components.NewSpinner()
-	spinner.SetSuffix(" Scanning...")
 
 	main := tview.NewFlex().SetDirection(tview.FlexRow)
-	main.AddItem(
-		tview.NewTextView().
-			SetText("whosthere").
-			SetTextAlign(tview.AlignCenter),
-		0, 1, false,
-	)
-	main.AddItem(t, 0, 18, true)
+	main.AddItem(header, 1, 0, false)
+	main.AddItem(t, 0, 1, true)
 
-	filterView := tview.NewTextView().SetTextAlign(tview.AlignLeft)
-	status := tview.NewFlex().SetDirection(tview.FlexColumn)
-	helpText := tview.NewTextView().
-		SetText("j/k: up/down - g/G: top/bottom - Enter: details").
-		SetTextAlign(tview.AlignRight)
-	status.AddItem(spinner.View(), 0, 1, false)
-	status.AddItem(helpText, 0, 2, false)
+	statusBar := components.NewStatusBar()
+	statusBar.Spinner().SetSuffix(" Scanning...")
+	statusBar.SetHelp("j/k: up/down - g/G: top/bottom - Enter: details - Ctrl+T: theme")
+
+	filterBar := components.NewFilterBar()
 
 	dp := &DashboardPage{
 		Flex:        main,
 		deviceTable: t,
-		spinner:     spinner,
+		spinner:     statusBar.Spinner(),
 		state:       s,
-		navigate:    navigate,
-		filterView:  filterView,
-		statusRow:   status,
-		helpText:    helpText,
+		router:      router,
+		header:      header,
+		filterBar:   filterBar,
+		statusBar:   statusBar,
+		version:     version,
 	}
-	dp.updateFooter(false)
 
+	theme.RegisterPrimitive(dp)
+
+	dp.updateFooter(false)
 	t.OnSearchStatus(dp.handleSearchStatus)
 	t.SetInputCapture(func(ev *tcell.EventKey) *tcell.EventKey { return t.HandleInput(ev) })
 	t.SetSelectedFunc(func(row, col int) {
@@ -66,8 +62,8 @@ func NewDashboardPage(s *state.AppState, navigate func(route string)) *Dashboard
 			return
 		}
 		s.SetSelectedIP(ip)
-		if dp.navigate != nil {
-			dp.navigate(navigation.RouteDetail)
+		if dp.router != nil {
+			dp.router.NavigateTo(navigation.RouteDetail)
 		}
 	})
 
@@ -82,32 +78,31 @@ func (p *DashboardPage) FocusTarget() tview.Primitive { return p.deviceTable }
 
 func (p *DashboardPage) Spinner() *components.Spinner { return p.spinner }
 
-func (p *DashboardPage) RefreshFromState() {
+func (p *DashboardPage) Refresh() {
 	devices := p.state.DevicesSnapshot()
 	p.deviceTable.ReplaceAll(devices)
 }
 
-func (p *DashboardPage) Refresh() {
-	p.RefreshFromState()
-}
-
 func (p *DashboardPage) updateFooter(showFilter bool) {
-	if p.Flex == nil || p.statusRow == nil || p.filterView == nil {
+	if p.Flex == nil || p.statusBar == nil || p.filterBar == nil {
 		return
 	}
-	p.RemoveItem(p.filterView)
-	p.RemoveItem(p.statusRow)
+	p.RemoveItem(p.filterBar)
+	p.RemoveItem(p.statusBar.Primitive())
 	if showFilter {
-		p.AddItem(p.filterView, 1, 0, false)
+		p.AddItem(p.filterBar, 1, 0, false)
 	}
-	p.AddItem(p.statusRow, 1, 0, false)
+	p.AddItem(p.statusBar.Primitive(), 1, 0, false)
 }
 
-// handleSearchStatus updates footer visibility and help text based on table search state.
+// handleSearchStatus updates footer visibility and filter bar based on table search state.
 func (p *DashboardPage) handleSearchStatus(status components.SearchStatus) {
-	if p.filterView != nil {
-		p.filterView.SetTextColor(status.Color)
-		p.filterView.SetText(status.Text)
+	if p.filterBar != nil {
+		if status.Showing {
+			p.filterBar.Show(status.Text, status.Color)
+		} else {
+			p.filterBar.Clear()
+		}
 	}
 	p.updateFooter(status.Showing)
 }

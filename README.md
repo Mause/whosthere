@@ -73,18 +73,27 @@ splash:
   enabled: true # show splash screen on startup
   delay: 1s     # delay for the splash screen
 theme:
-  # maps 1:1 to tview.Theme https://github.com/rivo/tview/blob/master/styles.go#L6
-  primitive_background_color: "#000a1a"
-  contrast_background_color: "#001a33"
-  more_contrast_background_color: "#003366"
-  border_color: "#0088ff"
-  title_color: "#00ffff"
-  graphics_color: "#00ffaa"
-  primary_text_color: "#cceeff"
-  secondary_text_color: "#6699ff"
-  tertiary_text_color: "#ffaa00"
-  inverse_text_color: "#000a1a"
-  contrast_secondary_text_color: "#88ddff"
+  # pick a built-in theme by name; unknown names fall back to "default"
+  name: default
+  # default palette (uncomment and set name: custom to tweak)
+  # primitive_background_color: "#000a1a"
+  # contrast_background_color: "#001a33"
+  # more_contrast_background_color: "#003366"
+  # border_color: "#0088ff"
+  # title_color: "#00ffff"
+  # graphics_color: "#00ffaa"
+  # primary_text_color: "#cceeff"
+  # secondary_text_color: "#6699ff"
+  # tertiary_text_color: "#ffaa00"
+  # inverse_text_color: "#000a1a"
+  # contrast_secondary_text_color: "#88ddff"
+scanners:
+  mdns:
+    enabled: true
+  ssdp:
+    enabled: true
+  arp:
+    enabled: true
 ```
 
 ## Logging

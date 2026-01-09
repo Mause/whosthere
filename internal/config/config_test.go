@@ -109,6 +109,10 @@ func TestDefaultConfigProducesValidConfig(t *testing.T) {
 	if err := cfg.validateAndNormalize(); err != nil {
 		t.Fatalf("expected default config to be valid, got %v", err)
 	}
+
+	if cfg.Theme.Name != DefaultThemeName {
+		t.Fatalf("expected default theme %q, got %q", DefaultThemeName, cfg.Theme.Name)
+	}
 }
 
 func TestLoaderValidateNilConfig(t *testing.T) {

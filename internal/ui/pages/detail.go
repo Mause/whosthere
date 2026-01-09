@@ -5,11 +5,12 @@ import (
 	"sort"
 	"time"
 
-	"github.com/derailed/tcell/v2"
-	"github.com/derailed/tview"
-	"github.com/ramonvermeulen/whosthere/internal/discovery"
+	"github.com/gdamore/tcell/v2"
 	"github.com/ramonvermeulen/whosthere/internal/state"
+	"github.com/ramonvermeulen/whosthere/internal/ui/components"
 	"github.com/ramonvermeulen/whosthere/internal/ui/navigation"
+	"github.com/ramonvermeulen/whosthere/internal/ui/theme"
+	"github.com/rivo/tview"
 )
 
 var _ navigation.Page = &DetailPage{}
@@ -17,32 +18,44 @@ var _ navigation.Page = &DetailPage{}
 // DetailPage shows detailed information about the currently selected device.
 type DetailPage struct {
 	*tview.Flex
-	info  *tview.TextView
-	state *state.AppState
-
-	navigate func(route string)
+	info      *tview.TextView
+	state     *state.AppState
+	router    *navigation.Router
+	header    *components.Header
+	statusBar *components.StatusBar
 }
 
-func NewDetailPage(s *state.AppState, navigate func(route string), uiQueue func(func())) *DetailPage {
+func NewDetailPage(s *state.AppState, router *navigation.Router, version string) *DetailPage {
 	main := tview.NewFlex().SetDirection(tview.FlexRow)
-	main.AddItem(tview.NewTextView().SetText("whosthere").SetTextAlign(tview.AlignCenter), 0, 1, false)
+	header := components.NewHeader(version)
 
 	info := tview.NewTextView().SetDynamicColors(true).SetWrap(true)
-	info.SetBorder(true).SetTitle("Details").SetBorderColor(tview.Styles.BorderColor).SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+	info.SetBorder(true).
+		SetTitle("Details").
+		SetTitleColor(tview.Styles.TitleColor).
+		SetBorderColor(tview.Styles.BorderColor).
+		SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+
+	statusBar := components.NewStatusBar()
+	statusBar.SetHelp("Esc/q: Back")
+
+	main.AddItem(header, 0, 1, false)
 	main.AddItem(info, 0, 18, true)
+	main.AddItem(statusBar.Primitive(), 1, 0, false)
 
-	statusFlex := tview.NewFlex().SetDirection(tview.FlexColumn)
-	statusFlex.AddItem(tview.NewTextView().SetText("Esc/q: Back").SetTextAlign(tview.AlignRight), 0, 4, false)
-	main.AddItem(statusFlex, 1, 0, false)
-
-	p := &DetailPage{Flex: main, state: s, info: info, navigate: navigate}
+	p := &DetailPage{
+		Flex:      main,
+		state:     s,
+		router:    router,
+		info:      info,
+		header:    header,
+		statusBar: statusBar,
+	}
 
 	info.SetInputCapture(handleInput(p))
-	s.AddListener(func(d discovery.Device) {
-		if p.state.SelectedIP() == d.IP.String() {
-			uiQueue(p.Refresh)
-		}
-	})
+
+	theme.RegisterPrimitive(p)
+	theme.RegisterPrimitive(p.info)
 
 	p.Refresh()
 	return p
@@ -55,8 +68,8 @@ func handleInput(p *DetailPage) func(ev *tcell.EventKey) *tcell.EventKey {
 		}
 		switch {
 		case ev.Key() == tcell.KeyEsc || ev.Rune() == 'q':
-			if p.navigate != nil {
-				p.navigate(navigation.RouteDashboard)
+			if p.router != nil {
+				p.router.NavigateTo(navigation.RouteDashboard)
 			}
 			return nil
 		default:
