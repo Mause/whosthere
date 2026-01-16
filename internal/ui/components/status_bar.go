@@ -1,13 +1,16 @@
 package components
 
 import (
+	"github.com/ramonvermeulen/whosthere/internal/core/state"
 	"github.com/ramonvermeulen/whosthere/internal/ui/theme"
 	"github.com/rivo/tview"
 )
 
+var _ UIComponent = &StatusBar{}
+
 // StatusBar combines a Spinner with a right-aligned help text into a single flex row.
 type StatusBar struct {
-	root    *tview.Flex
+	*tview.Flex
 	spinner *Spinner
 	help    *tview.TextView
 }
@@ -18,20 +21,18 @@ func NewStatusBar() *StatusBar {
 		SetTextAlign(tview.AlignRight)
 	row := tview.NewFlex().
 		SetDirection(tview.FlexColumn).
-		AddItem(sp.View(), 0, 1, false).
+		AddItem(sp, 0, 1, false).
 		AddItem(help, 0, 2, false)
 
 	theme.RegisterPrimitive(help)
 	theme.RegisterPrimitive(row)
 
 	return &StatusBar{
-		root:    row,
+		Flex:    row,
 		spinner: sp,
 		help:    help,
 	}
 }
-
-func (s *StatusBar) Primitive() tview.Primitive { return s.root }
 
 func (s *StatusBar) Spinner() *Spinner { return s.spinner }
 
@@ -40,4 +41,9 @@ func (s *StatusBar) SetHelp(text string) {
 		return
 	}
 	s.help.SetText(text)
+}
+
+// Render implements UIComponent.
+func (s *StatusBar) Render(_ state.ReadOnly) {
+	// StatusBar is updated via SetHelp, no state update needed.
 }

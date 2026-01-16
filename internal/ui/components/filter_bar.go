@@ -2,9 +2,12 @@ package components
 
 import (
 	"github.com/gdamore/tcell/v2"
+	"github.com/ramonvermeulen/whosthere/internal/core/state"
 	"github.com/ramonvermeulen/whosthere/internal/ui/theme"
 	"github.com/rivo/tview"
 )
+
+var _ UIComponent = &FilterBar{}
 
 // FilterBar wraps a TextView used to display live search/filter status in the footer.
 type FilterBar struct {
@@ -34,4 +37,9 @@ func (f *FilterBar) Clear() {
 		return
 	}
 	f.SetText("")
+}
+
+// Render implements UIComponent.
+func (f *FilterBar) Render(s state.ReadOnly) {
+	// FilterBar is updated via Show/Clear, no state update needed.
 }

@@ -10,12 +10,12 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/ramonvermeulen/whosthere/internal/discovery"
-	"github.com/ramonvermeulen/whosthere/internal/discovery/arp"
-	"github.com/ramonvermeulen/whosthere/internal/discovery/mdns"
-	"github.com/ramonvermeulen/whosthere/internal/discovery/ssdp"
-	"github.com/ramonvermeulen/whosthere/internal/logging"
-	"github.com/ramonvermeulen/whosthere/internal/oui"
+	"github.com/ramonvermeulen/whosthere/internal/core/discovery"
+	"github.com/ramonvermeulen/whosthere/internal/core/discovery/arp"
+	"github.com/ramonvermeulen/whosthere/internal/core/discovery/mdns"
+	"github.com/ramonvermeulen/whosthere/internal/core/discovery/ssdp"
+	"github.com/ramonvermeulen/whosthere/internal/core/logging"
+	"github.com/ramonvermeulen/whosthere/internal/core/oui"
 )
 
 var scanCmd = &cobra.Command{
@@ -33,7 +33,7 @@ Examples:
 		scanDuration := time.Duration(timeoutSec) * time.Second
 
 		level := logging.LevelFromEnv(zapcore.InfoLevel)
-		_, _, err := logging.Init("whosthere-scan", level, true)
+		_, _, err := logging.Init(level, true)
 		if err != nil {
 			return err
 		}

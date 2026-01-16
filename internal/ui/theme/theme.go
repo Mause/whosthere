@@ -1,12 +1,13 @@
 package theme
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/ramonvermeulen/whosthere/internal/config"
-	"github.com/ramonvermeulen/whosthere/internal/logging"
+	"github.com/ramonvermeulen/whosthere/internal/core/config"
+	"github.com/ramonvermeulen/whosthere/internal/core/logging"
 	"github.com/rivo/tview"
 	"go.uber.org/zap"
 )
@@ -336,4 +337,167 @@ func Get(name string) tview.Theme {
 		th = registry[config.DefaultThemeName]
 	}
 	return th
+}
+
+var registerFunc func(tview.Primitive)
+
+// SetRegisterFunc sets the function to call for registering primitives for theme updates.
+func SetRegisterFunc(fn func(tview.Primitive)) {
+	registerFunc = fn
+}
+
+// RegisterPrimitive registers a primitive for theme updates.
+func RegisterPrimitive(p tview.Primitive) {
+	if registerFunc != nil {
+		registerFunc(p)
+	}
+}
+
+// SaveToConfig saves the current theme to the config file.
+func SaveToConfig(themeName string, cfg *config.Config) error {
+	if cfg == nil {
+		return fmt.Errorf("config not initialized")
+	}
+
+	cfg.Theme.Name = themeName
+
+	if err := config.Save(cfg, ""); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	return nil
+}
+
+// ApplyToPrimitive applies theme colors to any tview primitive.
+// Supports all official tview primitives with proper styling methods.
+func ApplyToPrimitive(p tview.Primitive) {
+	if p == nil {
+		return
+	}
+
+	switch v := p.(type) {
+	case *tview.TextView:
+		v.SetTextColor(tview.Styles.PrimaryTextColor)
+		v.SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+		v.SetBorderColor(tview.Styles.BorderColor)
+		v.SetTitleColor(tview.Styles.TitleColor)
+
+	case *tview.TextArea:
+		v.SetTextStyle(tcell.StyleDefault.
+			Foreground(tview.Styles.PrimaryTextColor).
+			Background(tview.Styles.PrimitiveBackgroundColor))
+		v.SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+		v.SetBorderColor(tview.Styles.BorderColor)
+		v.SetTitleColor(tview.Styles.TitleColor)
+
+	case *tview.Table:
+		v.SetBordersColor(tview.Styles.BorderColor)
+		v.SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+		v.SetBorderColor(tview.Styles.BorderColor)
+		v.SetTitleColor(tview.Styles.TitleColor)
+
+	case *tview.TreeView:
+		v.SetGraphicsColor(tview.Styles.GraphicsColor)
+		v.SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+		v.SetBorderColor(tview.Styles.BorderColor)
+		v.SetTitleColor(tview.Styles.TitleColor)
+
+	case *tview.List:
+		v.SetMainTextStyle(tcell.StyleDefault.
+			Foreground(tview.Styles.PrimaryTextColor).
+			Background(tview.Styles.PrimitiveBackgroundColor))
+		v.SetSecondaryTextStyle(tcell.StyleDefault.
+			Foreground(tview.Styles.SecondaryTextColor).
+			Background(tview.Styles.PrimitiveBackgroundColor))
+		v.SetShortcutStyle(tcell.StyleDefault.
+			Foreground(tview.Styles.TertiaryTextColor).
+			Background(tview.Styles.PrimitiveBackgroundColor))
+		v.SetSelectedStyle(tcell.StyleDefault.
+			Foreground(tview.Styles.InverseTextColor).
+			Background(tview.Styles.SecondaryTextColor))
+		v.SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+		v.SetBorderColor(tview.Styles.BorderColor)
+		v.SetTitleColor(tview.Styles.TitleColor)
+
+	case *tview.InputField:
+		v.SetFieldTextColor(tview.Styles.PrimaryTextColor)
+		v.SetFieldBackgroundColor(tview.Styles.ContrastBackgroundColor)
+		v.SetLabelColor(tview.Styles.SecondaryTextColor)
+		v.SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+		v.SetBorderColor(tview.Styles.BorderColor)
+		v.SetTitleColor(tview.Styles.TitleColor)
+
+	case *tview.DropDown:
+		v.SetFieldTextColor(tview.Styles.PrimaryTextColor)
+		v.SetFieldBackgroundColor(tview.Styles.ContrastBackgroundColor)
+		v.SetLabelColor(tview.Styles.SecondaryTextColor)
+		v.SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+		v.SetBorderColor(tview.Styles.BorderColor)
+		v.SetTitleColor(tview.Styles.TitleColor)
+
+	case *tview.Checkbox:
+		v.SetLabelColor(tview.Styles.SecondaryTextColor)
+		v.SetFieldTextColor(tview.Styles.PrimaryTextColor)
+		v.SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+		v.SetBorderColor(tview.Styles.BorderColor)
+		v.SetTitleColor(tview.Styles.TitleColor)
+
+	case *tview.Image:
+		v.SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+		v.SetBorderColor(tview.Styles.BorderColor)
+		v.SetTitleColor(tview.Styles.TitleColor)
+
+	case *tview.Button:
+		v.SetLabelColor(tview.Styles.PrimaryTextColor)
+		v.SetBackgroundColor(tview.Styles.ContrastBackgroundColor)
+		v.SetBorderColor(tview.Styles.BorderColor)
+		v.SetTitleColor(tview.Styles.TitleColor)
+
+	case *tview.Form:
+		v.SetFieldBackgroundColor(tview.Styles.ContrastBackgroundColor)
+		v.SetFieldTextColor(tview.Styles.PrimaryTextColor)
+		v.SetLabelColor(tview.Styles.SecondaryTextColor)
+		v.SetButtonBackgroundColor(tview.Styles.ContrastBackgroundColor)
+		v.SetButtonTextColor(tview.Styles.PrimaryTextColor)
+		v.SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+		v.SetBorderColor(tview.Styles.BorderColor)
+		v.SetTitleColor(tview.Styles.TitleColor)
+
+	case *tview.Modal:
+		v.SetTextColor(tview.Styles.PrimaryTextColor)
+		v.SetButtonBackgroundColor(tview.Styles.ContrastBackgroundColor)
+		v.SetButtonTextColor(tview.Styles.PrimaryTextColor)
+		v.SetBackgroundColor(tview.Styles.ContrastBackgroundColor)
+		v.SetBorderColor(tview.Styles.BorderColor)
+		v.SetBorderStyle(tcell.StyleDefault.
+			Foreground(tview.Styles.PrimaryTextColor).
+			Background(tview.Styles.PrimitiveBackgroundColor))
+
+	case *tview.Grid:
+		v.SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+		v.SetBordersColor(tview.Styles.BorderColor)
+		v.SetBorderColor(tview.Styles.BorderColor)
+		v.SetTitleColor(tview.Styles.TitleColor)
+
+	case *tview.Flex:
+		v.SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+		v.SetBorderColor(tview.Styles.BorderColor)
+		v.SetTitleColor(tview.Styles.TitleColor)
+
+	case *tview.Pages:
+		v.SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+		v.SetBorderColor(tview.Styles.BorderColor)
+		v.SetTitleColor(tview.Styles.TitleColor)
+
+	default:
+		if box, ok := p.(interface{ SetBackgroundColor(tcell.Color) *tview.Box }); ok {
+			box.SetBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
+		}
+		if bordered, ok := p.(interface{ SetBorderColor(tcell.Color) *tview.Box }); ok {
+			bordered.SetBorderColor(tview.Styles.BorderColor)
+		}
+		if titled, ok := p.(interface{ SetTitleColor(tcell.Color) *tview.Box }); ok {
+			titled.SetTitleColor(tview.Styles.TitleColor)
+		}
+	}
 }

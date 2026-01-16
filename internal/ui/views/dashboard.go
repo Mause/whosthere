@@ -1,0 +1,99 @@
+package views
+
+import (
+	"github.com/gdamore/tcell/v2"
+	"github.com/ramonvermeulen/whosthere/internal/core/state"
+	"github.com/ramonvermeulen/whosthere/internal/ui/components"
+	"github.com/ramonvermeulen/whosthere/internal/ui/events"
+	"github.com/ramonvermeulen/whosthere/internal/ui/routes"
+	"github.com/ramonvermeulen/whosthere/internal/ui/theme"
+	"github.com/rivo/tview"
+)
+
+var _ View = &DashboardView{}
+
+// DashboardView is the dashboard showing discovered devices.
+type DashboardView struct {
+	*tview.Flex
+	header      *components.Header
+	deviceTable *components.DeviceTable
+	filterBar   *components.FilterBar
+	statusBar   *components.StatusBar
+
+	emit func(e events.Event)
+}
+
+func NewDashboardView(emit func(events.Event)) *DashboardView {
+	header := components.NewHeader()
+	t := components.NewDeviceTable(emit)
+
+	main := tview.NewFlex().SetDirection(tview.FlexRow)
+	main.AddItem(header, 1, 0, false)
+	main.AddItem(t, 0, 1, true)
+
+	statusBar := components.NewStatusBar()
+	statusBar.Spinner().SetSuffix(" Scanning...")
+	statusBar.SetHelp("j/k: up/down" + components.Divider + "g/G: top/bottom" + components.Divider + "Enter: details" + components.Divider + "Ctrl+T: theme")
+
+	filterBar := components.NewFilterBar()
+
+	d := &DashboardView{
+		Flex:        main,
+		header:      header,
+		deviceTable: t,
+		filterBar:   filterBar,
+		statusBar:   statusBar,
+		emit:        emit,
+	}
+
+	theme.RegisterPrimitive(d)
+
+	d.updateFooter(false)
+	t.OnSearchStatus(d.handleSearchStatus)
+	t.SetInputCapture(func(ev *tcell.EventKey) *tcell.EventKey { return t.HandleInput(ev) })
+	t.SetSelectedFunc(func(row, col int) {
+		ip := t.SelectedIP()
+		if ip == "" {
+			return
+		}
+		d.emit(events.DeviceSelected{IP: ip})
+		d.emit(events.NavigateTo{Route: routes.RouteDetail})
+	})
+
+	return d
+}
+
+func (d *DashboardView) FocusTarget() tview.Primitive { return d.deviceTable }
+
+func (d *DashboardView) Spinner() *components.Spinner { return d.statusBar.Spinner() }
+
+func (d *DashboardView) Render(s state.ReadOnly) {
+	d.deviceTable.Render(s)
+	d.header.Render(s)
+	d.filterBar.Render(s)
+	d.statusBar.Render(s)
+}
+
+func (d *DashboardView) updateFooter(showFilter bool) {
+	if d.Flex == nil || d.statusBar == nil || d.filterBar == nil {
+		return
+	}
+	d.RemoveItem(d.filterBar)
+	d.RemoveItem(d.statusBar)
+	if showFilter {
+		d.AddItem(d.filterBar, 1, 0, false)
+	}
+	d.AddItem(d.statusBar, 1, 0, false)
+}
+
+// handleSearchStatus updates footer visibility and filter bar based on table search state.
+func (d *DashboardView) handleSearchStatus(status components.SearchStatus) {
+	if d.filterBar != nil {
+		if status.Showing {
+			d.filterBar.Show(status.Text, status.Color)
+		} else {
+			d.filterBar.Clear()
+		}
+	}
+	d.updateFooter(status.Showing)
+}
