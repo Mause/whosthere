@@ -13,13 +13,14 @@ var _ discovery.Scanner = (*Scanner)(nil)
 // Scanner implements ARP-based discovery by reading the ARP cache.
 // Optional Sweeper can populate the cache in the background.
 type Scanner struct {
-	Sweeper Sweeper
+	iface   *discovery.InterfaceInfo
+	Sweeper *Sweeper
 
 	logger *zap.Logger
 }
 
-func NewScanner(sweeper Sweeper) *Scanner {
-	return &Scanner{Sweeper: sweeper}
+func NewScanner(iface *discovery.InterfaceInfo, sweeper *Sweeper) *Scanner {
+	return &Scanner{iface: iface, Sweeper: sweeper}
 }
 
 func (s *Scanner) Name() string { return "arp" }

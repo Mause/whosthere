@@ -2,48 +2,12 @@ package arp
 
 import (
 	"errors"
-	"fmt"
 	"net"
 )
 
 var (
 	ErrNoIPv4Interface = errors.New("arp: no IPv4 network interface found")
 )
-
-// getLocalNetwork returns local IPv4 address and subnet.
-// Returns the first non-loopback IPv4 interface found.
-func getLocalNetwork() (net.IP, *net.IPNet, error) {
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		return nil, nil, fmt.Errorf("list interfaces: %w", err)
-	}
-
-	for _, iface := range ifaces {
-		// Skip down and loopback interfaces
-		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
-			continue
-		}
-
-		addrs, err := iface.Addrs()
-		if err != nil {
-			continue
-		}
-
-		for _, addr := range addrs {
-			ipNet, ok := addr.(*net.IPNet)
-			if !ok {
-				continue
-			}
-
-			ip := ipNet.IP.To4()
-			if ip != nil && !ip.IsLoopback() {
-				return ip, ipNet, nil
-			}
-		}
-	}
-
-	return nil, nil, ErrNoIPv4Interface
-}
 
 func generateSubnetIPs(subnet *net.IPNet, skipIP net.IP) []net.IP {
 	var ips []net.IP
@@ -52,17 +16,41 @@ func generateSubnetIPs(subnet *net.IPNet, skipIP net.IP) []net.IP {
 		return ips // Not IPv4
 	}
 
-	ones, bits := subnet.Mask.Size()
-	if ones != 24 || bits != 32 {
-		return ips // Not a /24 network
+	// Calculate the network and broadcast IPs
+	networkIP := make(net.IP, len(network))
+	copy(networkIP, network)
+	broadcastIP := make(net.IP, len(network))
+	copy(broadcastIP, network)
+	for i := range network {
+		broadcastIP[i] |= ^subnet.Mask[i]
 	}
 
-	for i := 1; i <= 254; i++ {
-		ip := net.IPv4(network[0], network[1], network[2], byte(i))
-		if !ip.Equal(skipIP) {
-			ips = append(ips, ip)
+	// Start from the first host IP (network + 1)
+	currentIP := incrementIP(networkIP)
+
+	// Iterate until broadcast IP
+	// TODO (ramon) add a max to this, e.g. up to /16 otherwise log and just don't go till the broadcast IP
+	for !currentIP.Equal(broadcastIP) {
+		if !currentIP.Equal(skipIP) {
+			ipCopy := make(net.IP, len(currentIP))
+			copy(ipCopy, currentIP)
+			ips = append(ips, ipCopy)
 		}
+		currentIP = incrementIP(currentIP)
 	}
 
 	return ips
+}
+
+// incrementIP increments the IP address by 1
+func incrementIP(ip net.IP) net.IP {
+	newIP := make(net.IP, len(ip))
+	copy(newIP, ip)
+	for i := len(newIP) - 1; i >= 0; i-- {
+		newIP[i]++
+		if newIP[i] != 0 {
+			break
+		}
+	}
+	return newIP
 }

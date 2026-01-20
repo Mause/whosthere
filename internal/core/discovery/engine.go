@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ramonvermeulen/whosthere/internal/core/config"
 	"github.com/ramonvermeulen/whosthere/internal/core/oui"
 	"go.uber.org/zap"
 )
@@ -35,21 +36,21 @@ func WithOUIRegistry(r *oui.Registry) EngineOption {
 	return func(e *Engine) { e.OUIRegistry = r }
 }
 
+// WithSubnetHook allows callers to receive subnet hints for each device.
+func WithSubnetHook(f func(*net.IPNet)) EngineOption {
+	return func(e *Engine) { e.OnSubnet = f }
+}
+
 func NewEngine(scanners []Scanner, opts ...EngineOption) *Engine {
 	e := &Engine{
 		Scanners: scanners,
-		Timeout:  6 * time.Second,
+		Timeout:  config.DefaultScanDuration,
 		Subnets:  NewSubnetRegistry(),
 	}
 	for _, opt := range opts {
 		opt(e)
 	}
 	return e
-}
-
-// WithSubnetHook allows callers to receive subnet hints for each device.
-func WithSubnetHook(f func(*net.IPNet)) EngineOption {
-	return func(e *Engine) { e.OnSubnet = f }
 }
 
 // fillManufacturerIfEmpty fills the Manufacturer field of the device using OUI lookup if it's empty.

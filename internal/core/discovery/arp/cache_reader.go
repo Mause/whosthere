@@ -22,20 +22,24 @@ func (s *Scanner) readARPCache(ctx context.Context, out chan<- discovery.Device)
 
 // Entry represents a single ARP cache entry.
 type Entry struct {
-	IP  net.IP
-	MAC net.HardwareAddr
-	Age time.Duration // How old the entry is (0 if unknown)
+	IP            net.IP
+	MAC           net.HardwareAddr
+	Age           time.Duration
+	InterfaceName string
 }
 
 // emitARPEntries sends discovered ARP entries to the output channel.
 func (s *Scanner) emitARPEntries(ctx context.Context, out chan<- discovery.Device, entries []Entry) error {
 	now := time.Now()
 
-	// Get local subnet once to check broadcast addresses
-	_, subnet, _ := getLocalNetwork()
+	subnet := s.iface.IPv4Net
 
 	for _, entry := range entries {
 		if entry.IP == nil || entry.MAC == nil {
+			continue
+		}
+
+		if entry.InterfaceName != s.iface.Interface.Name {
 			continue
 		}
 
@@ -83,26 +87,43 @@ func isBroadcastMAC(mac net.HardwareAddr) bool {
 
 // isBroadcastIPv4 checks if an IPv4 address is a broadcast address for the given subnet.
 func isBroadcastIPv4(ip net.IP, subnet *net.IPNet) bool {
-	if subnet == nil || ip == nil {
+	if ip == nil || subnet == nil {
 		return false
 	}
+
 	ip4 := ip.To4()
 	if ip4 == nil {
 		return false
 	}
-	net4 := subnet.IP.To4()
+
 	mask := subnet.Mask
-	if net4 == nil || mask == nil || len(mask) != net.IPv4len {
+	if len(mask) != net.IPv4len {
 		return false
 	}
-	bcast := make(net.IP, 4)
-	for i := 0; i < 4; i++ {
-		// inverts the mask and ORs it with the network address to get the broadcast address
-		// e.g. for 192.168.1.1/24 with mask 255.255.255.0 you get mask inverted as 0.0.0.255
-		// and ORing it resulting in 192.168.1.255
-		bcast[i] = net4[i] | (255 ^ mask[i])
+
+	// Normalize subnet.IP to the actual network address by zeroing host bits.
+	network := subnet.IP.Mask(mask).To4()
+	if network == nil {
+		return false
 	}
-	return ip4.Equal(bcast)
+
+	var broadcast [net.IPv4len]byte
+	for i := 0; i < net.IPv4len; i++ {
+		// Compute the broadcast address by setting all host bits to 1:
+		//
+		//   broadcast = network | ^mask
+		//
+		// Example:
+		//   input CIDR:   192.168.1.42/24
+		//   normalized network (IP & mask):
+		//                 192.168.1.0
+		//   subnet mask:  255.255.255.0
+		//   inverted mask (^mask):
+		//                 0.0.0.255
+		//   broadcast:    192.168.1.255
+		broadcast[i] = network[i] | ^mask[i]
+	}
+	return ip4.Equal(broadcast[:])
 }
 
 // isMulticastIPv4 checks if an IPv4 address is in the multicast range (224.0.0.0/4).

@@ -933,17 +933,7 @@ func Names() []string {
 	return names
 }
 
-// Get retrieves a theme by name from the registry. Falls back to default if not found.
-func Get(name string) tview.Theme {
-	name = strings.ToLower(strings.TrimSpace(name))
-	th, ok := registry[name]
-	if !ok {
-		logging.L().Warn("theme not found, falling back to default", zap.String("name", name))
-		th = registry[config.DefaultThemeName]
-	}
-	return th
-}
-
+// todo(ramon) this logic is weird, why not just use one place to register in the App?
 var registerFunc func(tview.Primitive)
 
 // SetRegisterFunc sets the function to call for registering primitives for theme updates.

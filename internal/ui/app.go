@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -24,6 +25,9 @@ const (
 	refreshInterval = 1 * time.Second
 )
 
+// todo solve bug when you open ctrl + t too soon after starting app
+
+// App represents the main TUI application.
 type App struct {
 	*tview.Application
 	pages         *tview.Pages
@@ -38,7 +42,11 @@ type App struct {
 	portScanner   *discovery.PortScanner
 }
 
-func NewApp(cfg *config.Config, ouiDB *oui.Registry, version string) *App {
+func NewApp(cfg *config.Config, ouiDB *oui.Registry, version string) (*App, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("config cannot be nil")
+	}
+
 	app := tview.NewApplication()
 	appState := state.NewAppState(cfg, version)
 
@@ -47,7 +55,6 @@ func NewApp(cfg *config.Config, ouiDB *oui.Registry, version string) *App {
 		state:       appState,
 		cfg:         cfg,
 		events:      make(chan events.Event, 100),
-		portScanner: discovery.NewPortScanner(100),
 	}
 
 	a.emit = func(e events.Event) {
@@ -55,20 +62,20 @@ func NewApp(cfg *config.Config, ouiDB *oui.Registry, version string) *App {
 	}
 	a.pages = tview.NewPages()
 
-	theme.SetRegisterFunc(a.RegisterPrimitive)
+	theme.SetRegisterFunc(a.RegisterThemeAwarePrimitive)
 
 	a.applyTheme(appState.CurrentTheme())
 	a.setupPages(cfg)
-
-	if cfg != nil {
-		a.setupEngine(cfg, ouiDB)
+	err := a.setupEngine(cfg, ouiDB)
+	if err != nil {
+		return nil, fmt.Errorf("failed to setup engine: %w", err)
 	}
 
 	app.SetRoot(a.pages, true)
 	app.SetInputCapture(a.handleGlobalKeys)
 	app.EnableMouse(true)
 
-	return a
+	return a, nil
 }
 
 func (a *App) Run() error {
@@ -115,18 +122,26 @@ func (a *App) setupPages(cfg *config.Config) {
 	a.pages.SwitchToPage(initialPage)
 }
 
-func (a *App) setupEngine(cfg *config.Config, ouiDB *oui.Registry) {
-	sweeper := arp.NewSweeper(5*time.Minute, time.Minute)
+// methods like this can be re-used for other commands
+func (a *App) setupEngine(cfg *config.Config, ouiDB *oui.Registry) error {
+	iface, err := discovery.NewInterfaceInfo(cfg.NetworkInterface)
+	if err != nil {
+		return fmt.Errorf("failed to get network interface: %w", err)
+	}
+
+	a.portScanner = discovery.NewPortScanner(100, iface)
+
+	sweeper := arp.NewSweeper(iface, 5*time.Minute, time.Minute)
 	var scanners []discovery.Scanner
 
 	if cfg.Scanners.SSDP.Enabled {
-		scanners = append(scanners, &ssdp.Scanner{})
+		scanners = append(scanners, ssdp.NewScanner(iface))
 	}
 	if cfg.Scanners.ARP.Enabled {
-		scanners = append(scanners, arp.NewScanner(sweeper))
+		scanners = append(scanners, arp.NewScanner(iface, sweeper))
 	}
 	if cfg.Scanners.MDNS.Enabled {
-		scanners = append(scanners, &mdns.Scanner{})
+		scanners = append(scanners, mdns.NewScanner(iface))
 	}
 
 	a.engine = discovery.NewEngine(
@@ -135,6 +150,8 @@ func (a *App) setupEngine(cfg *config.Config, ouiDB *oui.Registry) {
 		discovery.WithOUIRegistry(ouiDB),
 		discovery.WithSubnetHook(sweeper.Trigger),
 	)
+
+	return nil
 }
 
 func (a *App) handleGlobalKeys(event *tcell.EventKey) *tcell.EventKey {
@@ -201,8 +218,8 @@ func (a *App) performScan() {
 	a.emit(events.DiscoveryStopped{})
 }
 
-// RegisterPrimitive registers a primitive for theme updates.
-func (a *App) RegisterPrimitive(p tview.Primitive) {
+// RegisterThemeAwarePrimitive registers a primitive for theme updates.
+func (a *App) RegisterThemeAwarePrimitive(p tview.Primitive) {
 	a.primitives = append(a.primitives, p)
 }
 

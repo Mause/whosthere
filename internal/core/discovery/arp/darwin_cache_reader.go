@@ -60,11 +60,19 @@ func (s *Scanner) readDarwinARPCacheRaw() ([]Entry, error) {
 			}
 		}
 
+		var interfaceName string
+		if rm.Index > 0 {
+			iface, err := net.InterfaceByIndex(rm.Index)
+			if err == nil {
+				interfaceName = iface.Name
+			}
+		}
+
 		if ip == nil || mac == nil {
 			continue
 		}
 
-		entries = append(entries, Entry{IP: ip, MAC: mac})
+		entries = append(entries, Entry{IP: ip, MAC: mac, InterfaceName: interfaceName})
 	}
 	return entries, nil
 }

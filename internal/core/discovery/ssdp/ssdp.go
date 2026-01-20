@@ -26,19 +26,24 @@ var _ discovery.Scanner = (*Scanner)(nil)
 
 // Scanner implements SSDP discovery (UPnP) via manual M-SEARCH over UDP.
 // Implemented as described in the RFC: https://datatracker.ietf.org/doc/html/draft-cai-ssdp-v1-03#section-4.1
-type Scanner struct{}
+type Scanner struct {
+	iface *discovery.InterfaceInfo
+}
+
+func NewScanner(iface *discovery.InterfaceInfo) *Scanner {
+	return &Scanner{iface: iface}
+}
 
 func (s *Scanner) Name() string { return "ssdp" }
 
 // Scan sends an SSDP M-SEARCH and streams responses incrementally until the ctx deadline.
 func (s *Scanner) Scan(ctx context.Context, out chan<- discovery.Device) error {
 	log := zap.L()
-
 	mAddr, err := net.ResolveUDPAddr("udp4", MulticastAddr)
 	if err != nil {
 		return fmt.Errorf("resolve ssdp addr: %w", err)
 	}
-	conn, err := net.ListenUDP("udp4", nil)
+	conn, err := net.ListenUDP("udp4", &net.UDPAddr{IP: *s.iface.IPv4Addr, Port: 0})
 	if err != nil {
 		return fmt.Errorf("listen udp: %w", err)
 	}

@@ -78,7 +78,9 @@ func parseProcNetARP(ctx context.Context, path string) ([]Entry, error) {
 			continue
 		}
 
-		entries = append(entries, Entry{IP: ip, MAC: mac})
+		interfaceName := fields[5]
+
+		entries = append(entries, Entry{IP: ip, MAC: mac, InterfaceName: interfaceName})
 	}
 
 	if err := scanner.Err(); err != nil {

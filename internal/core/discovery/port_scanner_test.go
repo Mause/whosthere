@@ -75,7 +75,7 @@ func TestPortScanner_Stream(t *testing.T) {
 }
 
 func TestPortScanner_Stream_EmptyPorts(t *testing.T) {
-	ps := NewPortScanner(1)
+	ps := NewPortScanner(1, nil)
 	var openPorts []int
 	var mu sync.Mutex
 	err := ps.Stream(context.Background(), "127.0.0.1", []int{}, 100*time.Millisecond, func(port int) {

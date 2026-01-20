@@ -17,21 +17,26 @@ type Dialer interface {
 type PortScanner struct {
 	workers int
 	dialer  Dialer
+	iface   *InterfaceInfo
 }
 
 // NewPortScanner creates a new PortScanner.
-func NewPortScanner(workers int) *PortScanner {
+func NewPortScanner(workers int, iface *InterfaceInfo) *PortScanner {
 	return &PortScanner{
 		workers: workers,
-		dialer:  &netDialer{},
+		dialer:  &netDialer{iface: iface},
+		iface:   iface,
 	}
 }
 
 // netDialer implements Dialer using net.Dialer.
-type netDialer struct{}
+type netDialer struct {
+	iface *InterfaceInfo
+}
 
 func (d *netDialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
 	var dialer net.Dialer
+	dialer.LocalAddr = &net.TCPAddr{IP: *d.iface.IPv4Addr}
 	return dialer.DialContext(ctx, network, address)
 }
 

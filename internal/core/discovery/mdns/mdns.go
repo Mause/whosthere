@@ -11,6 +11,7 @@ import (
 	"github.com/ramonvermeulen/whosthere/internal/core/discovery"
 	"go.uber.org/zap"
 	"golang.org/x/net/dns/dnsmessage"
+	"golang.org/x/net/ipv4"
 )
 
 var _ discovery.Scanner = (*Scanner)(nil)
@@ -24,7 +25,13 @@ const (
 	maxBufferSize = 16384
 )
 
-type Scanner struct{}
+type Scanner struct {
+	iface *discovery.InterfaceInfo
+}
+
+func NewScanner(iface *discovery.InterfaceInfo) *Scanner {
+	return &Scanner{iface: iface}
+}
 
 func (s *Scanner) Name() string {
 	return "mdns"
@@ -32,7 +39,8 @@ func (s *Scanner) Name() string {
 
 func (s *Scanner) Scan(ctx context.Context, out chan<- discovery.Device) error {
 	session := &scanSession{
-		log: zap.L().Named("mdns"),
+		log:   zap.L().Named("mdns"),
+		iface: s.iface,
 	}
 	return session.run(ctx, out)
 }
@@ -42,6 +50,7 @@ type scanSession struct {
 	log                 *zap.Logger
 	conn                *net.UDPConn
 	multicastAddr       *net.UDPAddr
+	iface               *discovery.InterfaceInfo
 	queriedServiceTypes map[string]bool
 	reportedDevices     map[string]bool
 }
@@ -53,9 +62,15 @@ func (ss *scanSession) setupConnection() error {
 		return fmt.Errorf("resolve multicast address: %w", err)
 	}
 
-	conn, err := net.ListenUDP("udp4", nil)
+	conn, err := net.ListenUDP("udp4", &net.UDPAddr{IP: *ss.iface.IPv4Addr, Port: 0})
 	if err != nil {
 		return fmt.Errorf("create UDP socket: %w", err)
+	}
+
+	p := ipv4.NewPacketConn(conn)
+	if err := p.JoinGroup(ss.iface.Interface, addr); err != nil {
+		conn.Close()
+		return fmt.Errorf("join multicast group: %w", err)
 	}
 
 	ss.conn = conn
