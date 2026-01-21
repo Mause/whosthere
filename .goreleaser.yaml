@@ -1,4 +1,5 @@
 project_name: "whosthere"
+version: 2
 
 before:
   hooks:
@@ -13,7 +14,7 @@ builds:
     ldflags:
       - -s -w -X main.versionStr={{.Version}}
       - -X main.commitStr={{ .Commit }}
-      - -X main.dateStr={{ .CurrentTag }}
+      - -X main.dateStr={{ .Date }}
     env:
       - CGO_ENABLED=0
 
@@ -35,5 +36,5 @@ homebrew_casks:
       email: ramonvermeulen98@gmail.com
     repository:
       owner: ramonvermeulen
-      name: homebrew
+      name: whosthere
       branch: main
