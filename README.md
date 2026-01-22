@@ -160,12 +160,22 @@ scanners:
 # Port scanner configuration
 port_scanner:
   timeout: 5s
-    # List of TCP ports to scan on discovered devices
+  # List of TCP ports to scan on discovered devices
   tcp: [21, 22, 23, 25, 80, 110, 135, 139, 143, 389, 443, 445, 993, 995, 1433, 1521, 3306, 3389, 5432, 5900, 8080, 8443, 9000, 9090, 9200, 9300, 10000, 27017]
 
 # Uncomment the next line to configure a specific network interface - uses OS default if not set
 # network_interface: lo0
 ```
+
+## Daemon mode HTTP API
+
+When running Whosthere in daemon mode, it exposes an very simplistic HTTP API with the following endpoints:
+
+| Method | Endpoint       | Description                        |
+| ------ | -------------- | ---------------------------------- |
+| GET    | `/devices`     | Get list of all discovered devices |
+| GET    | `/device/{ip}` | Get details of a specific device   |
+| GET    | `/healtz`      | Health check                       |
 
 ## Themes
 
