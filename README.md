@@ -46,7 +46,7 @@ go install github.com/ramonvermeulen/whosthere@latest
 Or build from source:
 
 ```bash
-git clone github.com/ramonvermeulen/whosthere.git
+git clone https://github.com/ramonvermeulen/whosthere.git
 cd whosthere
 make build
 ```
