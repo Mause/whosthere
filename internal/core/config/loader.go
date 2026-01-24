@@ -131,11 +131,9 @@ splash:
 
 # Theme configuration
 theme:
-  # Enable or disable the TUI theme
   # When disabled, the TUI will use the terminal it's default ANSI colors
-  # Also see the NO_COLOR environment variable to completely disable colors
+  # Also see the NO_COLOR environment variable to completely disable ANSI colors
   enabled: %t
-  # Configure the theme to use for the TUI
   # See the complete list of available themes at https://github.com/ramonvermeulen/whosthere/tree/main/internal/ui/theme/theme.go
   # Set name to "custom" to use the custom colors below
   # For any color that is not configured it will take the default theme value as fallback

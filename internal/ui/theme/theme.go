@@ -1082,8 +1082,8 @@ func ApplyToPrimitive(p tview.Primitive) {
 			Background(tview.Styles.PrimitiveBackgroundColor))
 		v.SetTitleColor(tview.Styles.TitleColor)
 		if noColor {
-			selectedStyle := tcell.StyleDefault.Reverse(true)
-			v.SetButtonStyle(selectedStyle)
+			buttonStyle := tcell.StyleDefault.Reverse(true)
+			v.SetButtonActivatedStyle(buttonStyle)
 		}
 
 	case *tview.Grid:
