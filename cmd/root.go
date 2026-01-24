@@ -48,6 +48,7 @@ var (
 )
 
 func init() {
+	rootCmd.Version = version.Version
 	initWhosthereFlags()
 	setCobraUsageTemplate()
 }
