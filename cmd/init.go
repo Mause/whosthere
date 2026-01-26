@@ -7,6 +7,7 @@ import (
 	"github.com/ramonvermeulen/whosthere/internal/core/discovery"
 	"github.com/ramonvermeulen/whosthere/internal/core/logging"
 	"github.com/ramonvermeulen/whosthere/internal/core/oui"
+	"github.com/wlynxg/anet"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )

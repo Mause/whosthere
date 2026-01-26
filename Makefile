@@ -6,6 +6,7 @@ BUILD_DATE := $(shell date -u +"%Y-%m-%d")
 
 # Local dev build ldflags: mimic GoReleaser's defaults and also set internal/version.
 LDFLAGS := -s -w \
+	-checklinkname=0 \
 	-X main.versionStr=$(GIT_TAG) \
 	-X main.commitStr=$(GIT_COMMIT) \
 	-X main.dateStr=$(BUILD_DATE)

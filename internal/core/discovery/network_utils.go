@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/wlynxg/anet"
+
 	"go.uber.org/zap"
 )
 
@@ -51,7 +53,7 @@ func getNetworkInterface(interfaceName string) (*net.Interface, error) {
 	var iface *net.Interface
 	var err error
 	if interfaceName != "" {
-		if iface, err = net.InterfaceByName(interfaceName); err != nil {
+		if iface, err = anet.InterfaceByName(interfaceName); err != nil {
 			return nil, err
 		}
 		zap.L().Info("using specified network interface", zap.String("interface", interfaceName))
@@ -77,7 +79,7 @@ func getDefaultInterface() (*net.Interface, error) {
 	// if that fails, return the first non-loopback interface that is up
 	// this is often the default interface, but in special cases it might not be
 	// todo: find better solution in the future, maybe by parsing routing table?
-	interfaces, err := net.Interfaces()
+	interfaces, err := anet.Interfaces()
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +106,7 @@ func getInterfaceNameByUDP() (*net.Interface, error) {
 
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 
-	interfaces, err := net.Interfaces()
+	interfaces, err := anet.Interfaces()
 	if err != nil {
 		return nil, err
 	}

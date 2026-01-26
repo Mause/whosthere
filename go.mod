@@ -8,6 +8,7 @@ require (
 	github.com/goccy/go-yaml v1.19.2
 	github.com/rivo/tview v0.42.0
 	github.com/spf13/cobra v1.10.2
+	github.com/wlynxg/anet v0.0.5
 	go.uber.org/zap v1.27.1
 	golang.org/x/net v0.49.0
 	golang.org/x/sys v0.40.0
