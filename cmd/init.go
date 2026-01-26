@@ -19,7 +19,7 @@ type InitResult struct {
 	Interface *discovery.InterfaceInfo
 }
 
-func InitComponents(configFileOverride string, interfaceOverride string, enableStdout bool) (*InitResult, error) {
+func InitComponents(configFileOverride, interfaceOverride string, enableStdout bool) (*InitResult, error) {
 	level := logging.LevelFromEnv(zapcore.InfoLevel)
 	logger, logPath, err := logging.Init(level, enableStdout)
 	if err != nil {
