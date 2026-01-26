@@ -22,6 +22,7 @@ type InterfaceInfo struct {
 // This makes sure that every scanner has the necessary information to perform network scans.
 // And makes interface handling consistent and swappable.
 func NewInterfaceInfo(interfaceName string) (*InterfaceInfo, error) {
+	zap.L().Info("creating InterfaceInfo", zap.String("interface", interfaceName))
 	iface, err := getNetworkInterface(interfaceName)
 	if err != nil {
 		return nil, fmt.Errorf("get network interface %s: %w", interfaceName, err)
@@ -99,6 +100,7 @@ func getDefaultInterface() (*net.Interface, error) {
 func getInterfaceNameByUDP() (*net.Interface, error) {
 	conn, err := net.Dial("udp", "8.8.8.8:53")
 	if err != nil {
+		zap.L().Info("failed to dial", zap.Error(err))
 		return nil, err
 	}
 	defer func(conn net.Conn) {
@@ -109,6 +111,7 @@ func getInterfaceNameByUDP() (*net.Interface, error) {
 
 	interfaces, err := anet.Interfaces()
 	if err != nil {
+		zap.L().Info("failed to get interfaces", zap.Error(err))
 		return nil, err
 	}
 
@@ -132,6 +135,8 @@ func getInterfaceNameByUDP() (*net.Interface, error) {
 			}
 		}
 	}
+
+	zap.L().Info("no interface found for local address", zap.String("local_ip", localAddr.IP.String()))
 
 	return nil, fmt.Errorf("interface not found for IP %s", localAddr.IP)
 }
