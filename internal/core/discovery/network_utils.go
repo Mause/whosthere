@@ -2,7 +2,6 @@ package discovery
 
 import (
 	"fmt"
-	"github.com/go-errors/errors"
 	"net"
 
 	"github.com/wlynxg/anet"
