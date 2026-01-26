@@ -27,7 +27,7 @@ func InitComponents(configFileOverride string, enableStdout bool) (*InitResult, 
 		return nil, err
 	}
 
-	apiLevel := cmd.getApiLevel()
+	apiLevel := androidDeviceApiLevel()
 
 	logger.Info("android api level detected", zap.Int("api_level", apiLevel))
 
