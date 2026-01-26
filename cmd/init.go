@@ -27,6 +27,10 @@ func InitComponents(configFileOverride string, enableStdout bool) (*InitResult, 
 		return nil, err
 	}
 
+	apiLevel := cmd.getApiLevel()
+
+	logger.Info("android api level detected", zap.Int("api_level", apiLevel))
+
 	cfg, err := config.Load(configFileOverride)
 	if err != nil {
 		return nil, err
