@@ -86,6 +86,7 @@ func getDefaultInterface() (*net.Interface, error) {
 	}
 
 	for _, iface := range interfaces {
+		zap.L().Debug("checking interface", zap.String("name", iface.Name), zap.Uint32("flags", uint32(iface.Flags)))
 		if iface.Flags&net.FlagLoopback == 0 && iface.Flags&net.FlagUp != 0 {
 			return &iface, nil
 		}
@@ -113,10 +114,14 @@ func getInterfaceNameByUDP() (*net.Interface, error) {
 		zap.L().Info("failed to get interfaces", zap.Error(err))
 		return nil, err
 	}
+	zap.L().Info("found interfaces", zap.Int("count", len(interfaces)))
+	zap.L().Info("looking for interface matching local address", zap.String("local_ip", localAddr.IP.String()))
 
 	for _, iface := range interfaces {
+		zap.L().Info("checking interface for local address", zap.String("interface", iface.Name))
 		addrs, err := iface.Addrs()
 		if err != nil {
+			zap.L().Info("failed to get addresses for interface", zap.String("interface", iface.Name), zap.Error(err))
 			continue
 		}
 
