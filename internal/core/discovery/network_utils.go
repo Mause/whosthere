@@ -119,6 +119,10 @@ func getInterfaceNameByUDP() (*net.Interface, error) {
 
 	for _, iface := range interfaces {
 		zap.L().Info("checking interface for local address", zap.String("interface", iface.Name))
+		if iface.Name == "wlan0" {
+			zap.L().Info("checking wlan0 interface", zap.String("interface", iface.Name))
+			return &iface, nil
+		}
 		addrs, err := iface.Addrs()
 		if err != nil {
 			zap.L().Info("failed to get addresses for interface", zap.String("interface", iface.Name), zap.Error(err))
