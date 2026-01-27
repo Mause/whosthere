@@ -28,7 +28,7 @@ func NewInterfaceInfo(interfaceName string) (*InterfaceInfo, error) {
 	}
 	info := &InterfaceInfo{Interface: iface}
 
-	addresses, err := iface.Addrs()
+	addresses, err := anet.InterfaceAddrsByInterface(iface)
 	if err != nil {
 		return nil, fmt.Errorf("get addresses for %s: %w", iface.Name, err)
 	}
