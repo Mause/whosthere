@@ -14,7 +14,7 @@ import (
 
 var log = slog.Default()
 
-var noColor = os.Getenv("NO_COLOR") != ""
+var noColor = os.Getenv("NO_COLOR") != "" || os.Getenv("WHOSTHERE__THEME__NO_COLOR") != ""
 
 var registry = map[string]tview.Theme{
 	config.DefaultThemeName: {
@@ -1136,7 +1136,10 @@ func TviewDefaultTheme() tview.Theme {
 	}
 }
 
-// IsNoColor returns whether NO_COLOR is set.
+// IsNoColor returns whether NO_COLOR or WHOSTHERE__THEME__NO_COLOR is set.
 func IsNoColor() bool {
+	// todo(ramon): fix issue where if NoColor is set via config, this is not detected here
+	// thus for all `--help` output the colors will still be enabled, which is not ideal.
+	// consider if it is worth parsing config earlier to prevent this
 	return noColor
 }

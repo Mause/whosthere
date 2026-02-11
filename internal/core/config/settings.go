@@ -36,16 +36,15 @@ type YAMLDoc struct {
 	ExampleValue    string
 	CommentedOut    bool
 	BlankLineBefore bool
+	BlankLineAfter  bool
 }
 
 type GlobalSetting struct {
 	YAMLKey  string
-	EnvVar   string
 	FlagName string
 	Short    string
 	Usage    string
 	Type     FlagType
-	Hidden   bool
 	Sources  map[SettingSource]bool
 	Set      Setter
 	Get      Getter
@@ -69,10 +68,9 @@ func GlobalSettings() []GlobalSetting {
 		// the "config" flag is a special case that only exists as a flag/env var and does not have a corresponding YAML key
 		// the reason it doesn't have a YAML key is that it specifies the path to the YAML config file, so it can't be set via YAML itself
 		{
-			EnvVar:   "WHOSTHERE_CONFIG",
 			FlagName: "config",
 			Short:    "c",
-			Usage:    "Path to config file.",
+			Usage:    "Overrides the path to config file (e.g. --config=/path/to/config.yaml)",
 			Type:     FlagTypeString,
 			Sources:  flagEnvOnly,
 		},
@@ -81,7 +79,7 @@ func GlobalSettings() []GlobalSetting {
 		{
 			FlagName: "pprof-port",
 			Short:    "D",
-			Usage:    "Pprof HTTP server port for debugging and profiling purposes (e.g., 6060)",
+			Usage:    "Pprof HTTP server port for debugging and profiling purposes (e.g. --pprof-port=6060)",
 			Type:     FlagTypeString,
 			Sources:  flagEnvOnly,
 		},
@@ -91,7 +89,7 @@ func GlobalSettings() []GlobalSetting {
 			YAMLKey:  "network_interface",
 			FlagName: "interface",
 			Short:    "i",
-			Usage:    "Network interface to use for scanning (overrides env/config).",
+			Usage:    "Network interface to use for scanning (e.g. --interface=en0)",
 			Type:     FlagTypeString,
 			Sources:  all,
 			Set:      func(c *Config, v string) error { c.NetworkInterface = v; return nil },
@@ -106,7 +104,7 @@ func GlobalSettings() []GlobalSetting {
 			YAMLKey:  "scan_interval",
 			FlagName: "interval",
 			Short:    "n",
-			Usage:    "Scan interval duration (e.g., 30s).",
+			Usage:    "Scan interval duration (e.g. --interval=30s)",
 			Type:     FlagTypeString,
 			Sources:  all,
 			Set: func(c *Config, v string) error {
@@ -126,7 +124,7 @@ func GlobalSettings() []GlobalSetting {
 			YAMLKey:  "scan_timeout",
 			FlagName: "timeout",
 			Short:    "t",
-			Usage:    "Scan timeout duration (e.g., 10s).",
+			Usage:    "Scan timeout duration (e.g. --timeout=10s)",
 			Type:     FlagTypeString,
 			Sources:  all,
 			Set: func(c *Config, v string) error {
@@ -146,7 +144,7 @@ func GlobalSettings() []GlobalSetting {
 			YAMLKey:  "scanners.mdns.enabled",
 			FlagName: "mdns",
 			Short:    "m",
-			Usage:    "Enable/disable the mDNS scanner.",
+			Usage:    "Enable/disable the mDNS scanner (e.g. --mdns=false)",
 			Type:     FlagTypeBool,
 			Sources:  all,
 			Set: func(c *Config, v string) error {
@@ -164,7 +162,7 @@ func GlobalSettings() []GlobalSetting {
 			YAMLKey:  "scanners.ssdp.enabled",
 			FlagName: "ssdp",
 			Short:    "s",
-			Usage:    "Enable/disable the SSDP scanner.",
+			Usage:    "Enable/disable the SSDP scanner (e.g. --ssdp=false)",
 			Type:     FlagTypeBool,
 			Sources:  all,
 			Set: func(c *Config, v string) error {
@@ -182,7 +180,7 @@ func GlobalSettings() []GlobalSetting {
 			YAMLKey:  "scanners.arp.enabled",
 			FlagName: "arp",
 			Short:    "a",
-			Usage:    "Enable/disable the ARP scanner.",
+			Usage:    "Enable/disable the ARP scanner (e.g. --arp=false)",
 			Type:     FlagTypeBool,
 			Sources:  all,
 			Set: func(c *Config, v string) error {
@@ -200,7 +198,7 @@ func GlobalSettings() []GlobalSetting {
 			YAMLKey:  "sweeper.enabled",
 			FlagName: "sweeper",
 			Short:    "S",
-			Usage:    "Enable/disable the sweeper.",
+			Usage:    "Enable/disable the sweeper (e.g. --sweeper=false)",
 			Type:     FlagTypeBool,
 			Sources:  all,
 			Set: func(c *Config, v string) error {
@@ -218,7 +216,7 @@ func GlobalSettings() []GlobalSetting {
 			YAMLKey:  "sweeper.interval",
 			FlagName: "sweeper-interval",
 			Short:    "W",
-			Usage:    "Sweeper interval duration (e.g., 5m).",
+			Usage:    "Sweeper interval duration (e.g., --sweeper-interval=5m)",
 			Type:     FlagTypeString,
 			Sources:  all,
 			Set: func(c *Config, v string) error {
@@ -236,7 +234,7 @@ func GlobalSettings() []GlobalSetting {
 			YAMLKey:  "sweeper.timeout",
 			FlagName: "sweeper-timeout",
 			Short:    "T",
-			Usage:    "Sweeper timeout duration (e.g., 2s).",
+			Usage:    "Sweeper timeout duration (e.g. --sweeper-timeout=2s)",
 			Type:     FlagTypeString,
 			Sources:  all,
 			Set: func(c *Config, v string) error {
@@ -251,11 +249,9 @@ func GlobalSettings() []GlobalSetting {
 			Doc: YAMLDoc{},
 		},
 		{
-			YAMLKey:  "port_scanner.timeout",
-			FlagName: "portscan-timeout",
-			Usage:    "Port scan timeout duration per port (e.g., 5s).",
-			Type:     FlagTypeString,
-			Sources:  yamlEnvOnly,
+			YAMLKey: "port_scanner.timeout",
+			Type:    FlagTypeString,
+			Sources: yamlEnvOnly,
 			Set: func(c *Config, v string) error {
 				d, err := parseDuration(v)
 				if err != nil {
@@ -268,11 +264,9 @@ func GlobalSettings() []GlobalSetting {
 			Doc: YAMLDoc{},
 		},
 		{
-			YAMLKey:  "port_scanner.tcp",
-			FlagName: "portscan-tcp",
-			Usage:    "Comma-separated TCP ports to scan (e.g., 22,80,443).",
-			Type:     FlagTypeString,
-			Sources:  yamlEnvOnly,
+			YAMLKey: "port_scanner.tcp",
+			Type:    FlagTypeString,
+			Sources: yamlEnvOnly,
 			Set: func(c *Config, v string) error {
 				ports, err := parseIntSlice(v)
 				if err != nil {
@@ -287,11 +281,9 @@ func GlobalSettings() []GlobalSetting {
 			},
 		},
 		{
-			YAMLKey:  "splash.enabled",
-			FlagName: "splash-enabled",
-			Usage:    "Enable/disable the splash screen.",
-			Type:     FlagTypeBool,
-			Sources:  yamlEnvOnly,
+			YAMLKey: "splash.enabled",
+			Type:    FlagTypeBool,
+			Sources: yamlEnvOnly,
 			Set: func(c *Config, v string) error {
 				b, err := parseBool(v)
 				if err != nil {
@@ -304,11 +296,9 @@ func GlobalSettings() []GlobalSetting {
 			Doc: YAMLDoc{},
 		},
 		{
-			YAMLKey:  "splash.delay",
-			FlagName: "splash-delay",
-			Usage:    "Splash screen delay duration (e.g., 1s).",
-			Type:     FlagTypeString,
-			Sources:  yamlEnvOnly,
+			YAMLKey: "splash.delay",
+			Type:    FlagTypeString,
+			Sources: yamlEnvOnly,
 			Set: func(c *Config, v string) error {
 				d, err := parseDuration(v)
 				if err != nil {
@@ -321,11 +311,9 @@ func GlobalSettings() []GlobalSetting {
 			Doc: YAMLDoc{},
 		},
 		{
-			YAMLKey:  "theme.enabled",
-			FlagName: "theme-enabled",
-			Usage:    "Enable/disable theming (ANSI colors).",
-			Type:     FlagTypeBool,
-			Sources:  yamlEnvOnly,
+			YAMLKey: "theme.enabled",
+			Type:    FlagTypeBool,
+			Sources: yamlEnvOnly,
 			Set: func(c *Config, v string) error {
 				b, err := parseBool(v)
 				if err != nil {
@@ -336,38 +324,55 @@ func GlobalSettings() []GlobalSetting {
 			},
 			Get: func(c *Config) any { return c.Theme.Enabled },
 			Doc: YAMLDoc{
-				Comment: "When disabled, the TUI will use the terminal it's default ANSI colors\nAlso see the NO_COLOR environment variable to completely disable ANSI colors",
+				Comment:        "When disabled, the TUI will use the terminal it's default ANSI colors\nAlso see the NO_COLOR environment variable to completely disable ANSI colors",
+				BlankLineAfter: true,
 			},
 		},
 		{
-			YAMLKey:  "theme.name",
-			FlagName: "theme",
-			Usage:    "Theme name (e.g., default, custom).",
-			Type:     FlagTypeString,
-			Sources:  yamlEnvOnly,
-			Set:      func(c *Config, v string) error { c.Theme.Name = v; return nil },
-			Get:      func(c *Config) any { return c.Theme.Name },
+			YAMLKey: "theme.name",
+			Type:    FlagTypeString,
+			Sources: yamlEnvOnly,
+			Set:     func(c *Config, v string) error { c.Theme.Name = v; return nil },
+			Get:     func(c *Config) any { return c.Theme.Name },
 			Doc: YAMLDoc{
-				Comment: "See the complete list of available themes at https://github.com/ramonvermeulen/whosthere/tree/main/internal/ui/theme/theme.go\nSet name to \"custom\" to use the custom colors below\nFor any color that is not configured it will take the default theme value as fallback",
+				Comment:        "See the complete list of available themes at https://github.com/ramonvermeulen/whosthere/tree/main/internal/ui/theme/theme.go\nSet name to \"custom\" to use the custom colors below\nFor any color that is not configured it will take the default theme value as fallback",
+				BlankLineAfter: true,
+			},
+		},
+		{
+			YAMLKey: "theme.no_color",
+			Type:    FlagTypeBool,
+			Sources: yamlEnvOnly,
+			Set: func(c *Config, v string) error {
+				b, err := parseBool(v)
+				if err != nil {
+					return err
+				}
+				c.Theme.NoColor = b
+				return nil
+			},
+			Get: func(c *Config) any { return c.Theme.NoColor },
+			Doc: YAMLDoc{
+				Comment:        "Disable ANSI colors completely, overrides theme.enabled\nCan also be set via NO_COLOR or WHOSTHERE__THEME__NO_COLOR environment variables",
+				CommentedOut:   true,
+				ExampleValue:   "false",
+				BlankLineAfter: true,
 			},
 		},
 		{
 			YAMLKey: "theme.primitive_background_color",
-			Usage:   "Theme primitive background color (hex).",
 			Type:    FlagTypeString,
 			Sources: yamlEnvOnly,
 			Set:     func(c *Config, v string) error { c.Theme.PrimitiveBackgroundColor = v; return nil },
 			Get:     func(c *Config) any { return c.Theme.PrimitiveBackgroundColor },
 			Doc: YAMLDoc{
-				Comment:         "Custom theme colors (uncomment and set name: custom to use)",
-				ExampleValue:    "\"#000a1a\"",
-				CommentedOut:    true,
-				BlankLineBefore: true,
+				Comment:      "Custom theme colors (uncomment and set name: custom to use)",
+				ExampleValue: "\"#000a1a\"",
+				CommentedOut: true,
 			},
 		},
 		{
 			YAMLKey: "theme.contrast_background_color",
-			Usage:   "Theme contrast background color (hex).",
 			Type:    FlagTypeString,
 			Sources: yamlEnvOnly,
 			Set:     func(c *Config, v string) error { c.Theme.ContrastBackgroundColor = v; return nil },
@@ -379,7 +384,6 @@ func GlobalSettings() []GlobalSetting {
 		},
 		{
 			YAMLKey: "theme.more_contrast_background_color",
-			Usage:   "Theme more-contrast background color (hex).",
 			Type:    FlagTypeString,
 			Sources: yamlEnvOnly,
 			Set:     func(c *Config, v string) error { c.Theme.MoreContrastBackgroundColor = v; return nil },
@@ -391,7 +395,6 @@ func GlobalSettings() []GlobalSetting {
 		},
 		{
 			YAMLKey: "theme.border_color",
-			Usage:   "Theme border color (hex).",
 			Type:    FlagTypeString,
 			Sources: yamlEnvOnly,
 			Set:     func(c *Config, v string) error { c.Theme.BorderColor = v; return nil },
@@ -403,7 +406,6 @@ func GlobalSettings() []GlobalSetting {
 		},
 		{
 			YAMLKey: "theme.title_color",
-			Usage:   "Theme title color (hex).",
 			Type:    FlagTypeString,
 			Sources: yamlEnvOnly,
 			Set:     func(c *Config, v string) error { c.Theme.TitleColor = v; return nil },
@@ -415,7 +417,6 @@ func GlobalSettings() []GlobalSetting {
 		},
 		{
 			YAMLKey: "theme.graphics_color",
-			Usage:   "Theme graphics color (hex).",
 			Type:    FlagTypeString,
 			Sources: yamlEnvOnly,
 			Set:     func(c *Config, v string) error { c.Theme.GraphicsColor = v; return nil },
@@ -427,7 +428,6 @@ func GlobalSettings() []GlobalSetting {
 		},
 		{
 			YAMLKey: "theme.primary_text_color",
-			Usage:   "Theme primary text color (hex).",
 			Type:    FlagTypeString,
 			Sources: yamlEnvOnly,
 			Set:     func(c *Config, v string) error { c.Theme.PrimaryTextColor = v; return nil },
@@ -439,7 +439,6 @@ func GlobalSettings() []GlobalSetting {
 		},
 		{
 			YAMLKey: "theme.secondary_text_color",
-			Usage:   "Theme secondary text color (hex).",
 			Type:    FlagTypeString,
 			Sources: yamlEnvOnly,
 			Set:     func(c *Config, v string) error { c.Theme.SecondaryTextColor = v; return nil },
@@ -451,7 +450,6 @@ func GlobalSettings() []GlobalSetting {
 		},
 		{
 			YAMLKey: "theme.tertiary_text_color",
-			Usage:   "Theme tertiary text color (hex).",
 			Type:    FlagTypeString,
 			Sources: yamlEnvOnly,
 			Set:     func(c *Config, v string) error { c.Theme.TertiaryTextColor = v; return nil },
@@ -463,7 +461,6 @@ func GlobalSettings() []GlobalSetting {
 		},
 		{
 			YAMLKey: "theme.inverse_text_color",
-			Usage:   "Theme inverse text color (hex).",
 			Type:    FlagTypeString,
 			Sources: yamlEnvOnly,
 			Set:     func(c *Config, v string) error { c.Theme.InverseTextColor = v; return nil },
@@ -475,7 +472,6 @@ func GlobalSettings() []GlobalSetting {
 		},
 		{
 			YAMLKey: "theme.contrast_secondary_text_color",
-			Usage:   "Theme contrast secondary text color (hex).",
 			Type:    FlagTypeString,
 			Sources: yamlEnvOnly,
 			Set:     func(c *Config, v string) error { c.Theme.ContrastSecondaryTextColor = v; return nil },
@@ -527,10 +523,6 @@ func RegisterGlobalConfigFlags(cmd *cobra.Command, flags *Flags) {
 			registerStringSetting(cmd, flags, &s, s.Usage)
 		case FlagTypeBool:
 			registerBoolSetting(cmd, flags, &s, s.Usage)
-		}
-
-		if s.Hidden {
-			_ = cmd.PersistentFlags().MarkHidden(s.FlagName)
 		}
 	}
 }
