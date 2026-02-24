@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/ramonvermeulen/whosthere/cmd"
+	"github.com/ramonvermeulen/whosthere/internal/cmd"
 	"github.com/ramonvermeulen/whosthere/internal/core/version"
 )
 
@@ -12,18 +12,14 @@ import (
 //   - main.date:    build date in RFC3339 format
 var (
 	versionStr = "dev"
-	commitStr  = "none"
+	commitStr  = "unknown"
 	dateStr    = "unknown"
 )
 
 func main() {
-	// Propagate build metadata into the internal version package so it can be
-	// used consistently across the CLI, TUI header, and logs.
 	version.Version = versionStr
 	version.Commit = commitStr
 	version.Date = dateStr
-
-	cmd.SetVersion(version.Version)
 
 	cmd.Execute()
 }

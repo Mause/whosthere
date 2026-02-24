@@ -6,7 +6,7 @@
 [![GitHub Release](https://img.shields.io/github/v/release/ramonvermeulen/whosthere)](https://github.com/ramonvermeulen/whosthere/releases)
 [![GitHub Repo stars](https://img.shields.io/github/stars/ramonvermeulen/whosthere)](https://github.com/ramonvermeulen/whosthere)
 
-Local Area Network discovery tool with a modern Terminal User Interface (TUI) written in Go.
+Local Area Network discovery tool with an interactive Terminal User Interface (TUI) written in Go.
 Discover, explore, and understand your LAN in an intuitive way.
 
 Whosthere performs **unprivileged, concurrent scans** using [**mDNS**](https://en.wikipedia.org/wiki/Multicast_DNS)
@@ -22,7 +22,7 @@ Whosthere provides a friendly, intuitive way to answer the question every networ
 
 ## Features
 
-- **Modern TUI:** Navigate and explore discovered devices intuitively.
+- **Interactive TUI:** Navigate and explore discovered devices intuitively.
 - **Fast & Concurrent:** Leverages multiple discovery methods simultaneously.
 - **No Elevated Privileges Required:** Runs entirely in user-space.
 - **Device Enrichment:** Uses [**OUI**](https://standards-oui.ieee.org/) lookup to show device manufacturers.
@@ -32,24 +32,40 @@ Whosthere provides a friendly, intuitive way to answer the question every networ
 
 ## Installation
 
+Via [**Homebrew**](https://brew.sh/) with `brew`:
+
 ```bash
-brew tap ramonvermeulen/whosthere
 brew install whosthere
 ```
 
-Or with Go:
+On [**NixOS**](https://nixos.org/) with `nix`:
+
+```bash
+nix profile install nixpkgs#whosthere
+```
+
+On [**Arch Linux**](https://archlinux.org/) with `yay`:
+
+```bash
+yay -S whosthere-bin
+```
+
+If your package manager is not listed you can always install with [**Go**](https://go.dev/):
 
 ```bash
 go install github.com/ramonvermeulen/whosthere@latest
 ```
 
-Or build from source:
+Or **build from source**:
 
 ```bash
 git clone https://github.com/ramonvermeulen/whosthere.git
 cd whosthere
 make build
 ```
+
+Additionally, you can download pre-built binaries from the
+[**releases page**](https://github.com/ramonvermeulen/whosthere/releases).
 
 ## Usage
 
@@ -59,10 +75,22 @@ Run the TUI for interactive discovery:
 whosthere
 ```
 
+Run as cli to do a single scan and output results:
+
+```bash
+whosthere scan -t 5
+```
+
+Output results to a JSON file:
+
+```bash
+whosthere scan -t 5 --json --pretty > devices.json
+```
+
 Run as a daemon with HTTP API:
 
 ```bash
-whosthere daemon --port 8080
+whosthere daemon --port=8080
 ```
 
 Additional command line options can be found by running:
@@ -71,74 +99,88 @@ Additional command line options can be found by running:
 whosthere --help
 ```
 
-## Platforms
-
-Whosthere is supported on the following platforms:
-
-- [x] Linux
-- [x] macOS
-- [x] Windows
-
 ## Key bindings (TUI)
 
-| Key                | Action                     |
-| ------------------ | -------------------------- |
-| `/`                | Start regex search         |
-| `k`                | Up                         |
-| `j`                | Down                       |
-| `g`                | Go to top                  |
-| `G`                | Go to bottom               |
-| `y`                | Copy IP of selected device |
-| `enter`            | Show device details        |
-| `CTRL+t`           | Toggle theme selector      |
-| `CTRL+c`           | Stop application           |
-| `ESC`              | Clear search / Go back     |
-| `p` (details view) | Start port scan on device  |
-| `tab` (modal view) | Switch button selection    |
-
-## Environment Variables
-
-| Variable           | Description                                                                     |
-| ------------------ | ------------------------------------------------------------------------------- |
-| `WHOSTHERE_CONFIG` | Path to the configuration file, to be able to overwrite the default location.   |
-| `WHOSTHERE_LOG`    | Set the log level (e.g., `debug`, `info`, `warn`, `error`). Defaults to `info`. |
-| `NO_COLOR`         | Disable ANSI colors in the TUI.                                                 |
+| Key                | Action                      |
+| ------------------ | --------------------------- |
+| `/`                | Start regex search          |
+| `k`                | Up                          |
+| `j`                | Down                        |
+| `g`                | Go to top                   |
+| `G`                | Go to bottom                |
+| `y`                | Copy IP of selected device  |
+| `Y`                | Copy MAC of selected device |
+| `enter`            | Show device details         |
+| `CTRL+t`           | Toggle theme selector       |
+| `CTRL+c`/`q`       | Stop application            |
+| `ESC`              | Clear search / Go back      |
+| `p` (details view) | Start port scan on device   |
+| `tab` (modal view) | Switch button selection     |
 
 ## Configuration
 
-Whosthere can be configured via a YAML configuration file.
-By default, it looks for the configuration file in the following order:
+Whosthere supports multiple configuration methods with the following precedence (highest to lowest):
 
-- Path specified in the `WHOSTHERE_CONFIG` environment variable (if set)
-- `$XDG_CONFIG_HOME/whosthere/config.yaml` (if `XDG_CONFIG_HOME` is set)
-- `~/.config/whosthere/config.yaml` (otherwise)
+1. **Command line flags** - Highest priority. See `whosthere --help` for available flags.
+1. **Environment variables** - Prefix with `WHOSTHERE__`. See [**Configuration via Environment Variables**](#configuration-via-environment-variables).
+1. **Configuration file** - YAML config file. See [**Configuration File**](#configuration-file).
+1. **Default values** - Fallback defaults. See `DefaultConfig()` in [**config.go**](https://github.com/ramonvermeulen/whosthere/blob/main/internal/core/config/config.go).
 
-When not running in TUI mode, logs are also written to the console output.
+### Configuration File
 
-Example of the default configuration file:
+Whosthere looks for the configuration file in the following order, using the first one found:
+
+1. Path specified via `--config` flag or `WHOSTHERE_CONFIG` environment variable
+1. `$XDG_CONFIG_HOME/whosthere/config.yaml` (if `XDG_CONFIG_HOME` is set)
+1. `~/.config/whosthere/config.yaml` (default location)
+
+**Example configuration:**
 
 ```yaml
+# Uncomment the next line to configure a specific network interface - uses OS default if not set
+# network_interface: eth0
+
 # How often to run discovery scans
 scan_interval: 20s
 
-# Maximum duration for each scan
-# If you set this too low some scanners or the sweeper might not complete in time
-scan_duration: 10s
+# Maximum timeout for each scan, recommended to be less than the scan interval
+scan_timeout: 10s
 
-# Splash screen configuration
+scanners:
+  mdns:
+    enabled: true
+  ssdp:
+    enabled: true
+  arp:
+    enabled: true
+
+sweeper:
+  enabled: true
+  interval: 5m
+  timeout: 20s
+
+port_scanner:
+  timeout: 5s
+  # List of TCP ports to scan on discovered devices
+  tcp: [21, 22, 23, 25, 80, 110, 135, 139, 143, 389, 443, 445, 993, 995, 1433, 1521, 3306, 3389, 5432, 5900, 8080, 8443, 9000, 9090, 9200, 9300, 10000, 27017]
+
 splash:
   enabled: true
   delay: 1s
 
-# Theme configuration
 theme:
   # When disabled, the TUI will use the terminal it's default ANSI colors
   # Also see the NO_COLOR environment variable to completely disable ANSI colors
   enabled: true
+
   # See the complete list of available themes at https://github.com/ramonvermeulen/whosthere/tree/main/internal/ui/theme/theme.go
   # Set name to "custom" to use the custom colors below
   # For any color that is not configured it will take the default theme value as fallback
   name: default
+
+  # Disable ANSI colors completely, overrides theme.enabled
+  # Can also be set via NO_COLOR or WHOSTHERE__THEME__NO_COLOR environment variables
+  # no_color: false
 
   # Custom theme colors (uncomment and set name: custom to use)
   # primitive_background_color: "#000a1a"
@@ -152,25 +194,32 @@ theme:
   # tertiary_text_color: "#ffaa00"
   # inverse_text_color: "#000a1a"
   # contrast_secondary_text_color: "#88ddff"
-
-# Scanner configuration
-scanners:
-  mdns:
-    enabled: true
-  ssdp:
-    enabled: true
-  arp:
-    enabled: true
-
-# Port scanner configuration
-port_scanner:
-  timeout: 5s
-  # List of TCP ports to scan on discovered devices
-  tcp: [21, 22, 23, 25, 80, 110, 135, 139, 143, 389, 443, 445, 993, 995, 1433, 1521, 3306, 3389, 5432, 5900, 8080, 8443, 9000, 9090, 9200, 9300, 10000, 27017]
-
-# Uncomment the next line to configure a specific network interface - uses OS default if not set
-# network_interface: lo0
 ```
+
+## Environment Variables
+
+### General Environment Variables
+
+| Variable           | Description                                                                     |
+| ------------------ | ------------------------------------------------------------------------------- |
+| `WHOSTHERE_CONFIG` | Path to the configuration file, to be able to overwrite the default location.   |
+| `WHOSTHERE_LOG`    | Set the log level (e.g., `debug`, `info`, `warn`, `error`). Defaults to `info`. |
+| `NO_COLOR`         | Disable ANSI colors in the TUI.                                                 |
+
+### Configuration via Environment Variables
+
+Any configuration option that is available in the YAML configuration, can be set via environment variables using the
+`WHOSTHERE__` prefix (note the double underscore). Nested configuration keys are separated by double underscores, and
+keys are case-insensitive.
+
+Examples:
+
+- `WHOSTHERE__SPLASH__ENABLED=false` - Disable the splash screen, equivalent to `splash.enabled: false` in the YAML config
+- `WHOSTHERE__SPLASH__DELAY=2s` - Set splash screen delay to 2 seconds, equivalent to `splash.delay: 2s` in the YAML config
+- `WHOSTHERE__SCAN_INTERVAL=30s` - Set scan interval to 30 seconds, equivalent to `scan_interval: 30s` in the YAML config
+- `WHOSTHERE__SCANNERS__MDNS__ENABLED=false` - Disable mDNS scanner, equivalent to `scanners.mdns.enabled: false` in the YAML config
+- `WHOSTHERE__PORT_SCANNER__TCP=80,443,8080` - Set custom TCP ports to scan, equivalent to `port_scanner.tcp: [80, 443, 8080]` in the YAML config
+- `WHOSTHERE__THEME__NAME=cyberpunk` - Set theme to cyberpunk, equivalent to `theme.name: cyberpunk` in the YAML config
 
 ## Daemon mode HTTP API
 
@@ -209,6 +258,14 @@ Logs are written to the application's state directory:
 
 When not running in TUI mode, logs are also written to the console.
 
+## Platforms
+
+Whosthere is supported on the following platforms:
+
+- [x] Linux
+- [x] macOS
+- [x] Windows
+
 ## Known Issues
 
 For clipboard functionality to work, a [**fork of go-clipboard**](https://github.com/dece2183/go-clipboard) is used.
@@ -225,6 +282,11 @@ Ensure you have the appropriate copy tool installed for your OS:
 Whosthere is intended for use on networks where you have permission to perform network discovery and scanning,
 such as your own home network. Unauthorized scanning of networks may be illegal and unethical.
 Always obtain proper authorization before using this tool on any network.
+
+This tool was created primarily for educational purposes and home network exploration. While functional
+and useful, it should not be considered a professional-grade network monitoring solution. Results are
+based on unprivileged scanning techniques and may not be comprehensive. For critical network analysis
+or security assessments, consider using established professional tools with formal support.
 
 ## Contributing
 
