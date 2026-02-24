@@ -6,6 +6,7 @@ BUILD_DATE := $(shell date -u +"%Y-%m-%d")
 
 # Local dev build ldflags: mimic GoReleaser's defaults and also set internal/version.
 LDFLAGS := -s -w \
+	-checklinkname=0 \
 	-X main.versionStr=$(GIT_TAG) \
 	-X main.commitStr=$(GIT_COMMIT) \
 	-X main.dateStr=$(BUILD_DATE)
@@ -23,10 +24,10 @@ dev-deps:
 	brew upgrade golangci-lint
 
 build:
-	CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o $(APP_NAME) .
+	go build -ldflags '$(LDFLAGS)' -o $(APP_NAME) .
 
 install: build
-	CGO_ENABLED=0 go install -v ./...
+	go install -v ./...
 
 lint:
 	golangci-lint run

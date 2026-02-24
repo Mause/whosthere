@@ -3,6 +3,10 @@ package discovery
 import (
 	"fmt"
 	"net"
+
+	"github.com/wlynxg/anet"
+
+	"go.uber.org/zap"
 )
 
 // InterfaceInfo contains network interface information required for device discovery.
@@ -38,13 +42,14 @@ type InterfaceInfo struct {
 //
 //	fmt.Printf("Using %s with IP %s\n", iface.Interface.Name, iface.IPv4Addr)
 func NewInterfaceInfo(interfaceName string) (*InterfaceInfo, error) {
+	zap.L().Info("creating InterfaceInfo", zap.String("interface", interfaceName))
 	iface, err := getNetworkInterface(interfaceName)
 	if err != nil {
 		return nil, fmt.Errorf("get network interface %s: %w", interfaceName, err)
 	}
 	info := &InterfaceInfo{Interface: iface}
 
-	addresses, err := iface.Addrs()
+	addresses, err := anet.InterfaceAddrsByInterface(iface)
 	if err != nil {
 		return nil, fmt.Errorf("get addresses for %s: %w", iface.Name, err)
 	}
@@ -70,7 +75,7 @@ func getNetworkInterface(interfaceName string) (*net.Interface, error) {
 	var iface *net.Interface
 	var err error
 	if interfaceName != "" {
-		if iface, err = net.InterfaceByName(interfaceName); err != nil {
+		if iface, err = anet.InterfaceByName(interfaceName); err != nil {
 			return nil, err
 		}
 		return iface, nil
@@ -94,12 +99,13 @@ func getDefaultInterface() (*net.Interface, error) {
 	// if that fails, return the first non-loopback interface that is up
 	// this is often the default interface, but in special cases it might not be
 	// todo: find better solution in the future, maybe by parsing routing table?
-	interfaces, err := net.Interfaces()
+	interfaces, err := anet.Interfaces()
 	if err != nil {
 		return nil, err
 	}
 
 	for _, iface := range interfaces {
+		zap.L().Debug("checking interface", zap.String("name", iface.Name), zap.Uint32("flags", uint32(iface.Flags)))
 		if iface.Flags&net.FlagLoopback == 0 && iface.Flags&net.FlagUp != 0 {
 			return &iface, nil
 		}
@@ -113,6 +119,7 @@ func getDefaultInterface() (*net.Interface, error) {
 func getInterfaceNameByUDP() (*net.Interface, error) {
 	conn, err := net.Dial("udp", "8.8.8.8:53")
 	if err != nil {
+		zap.L().Info("failed to dial", zap.Error(err))
 		return nil, err
 	}
 	defer func(conn net.Conn) {
@@ -121,14 +128,23 @@ func getInterfaceNameByUDP() (*net.Interface, error) {
 
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 
-	interfaces, err := net.Interfaces()
+	interfaces, err := anet.Interfaces()
 	if err != nil {
+		zap.L().Info("failed to get interfaces", zap.Error(err))
 		return nil, err
 	}
+	zap.L().Info("found interfaces", zap.Int("count", len(interfaces)))
+	zap.L().Info("looking for interface matching local address", zap.String("local_ip", localAddr.IP.String()))
 
 	for _, iface := range interfaces {
-		addrs, err := iface.Addrs()
+		zap.L().Info("checking interface for local address", zap.String("interface", iface.Name))
+		if iface.Name == "wlan0" {
+			zap.L().Info("checking wlan0 interface", zap.String("interface", iface.Name))
+			return &iface, nil
+		}
+		addrs, err := anet.InterfaceAddrsByInterface(&iface)
 		if err != nil {
+			zap.L().Info("failed to get addresses for interface", zap.String("interface", iface.Name), zap.Error(err))
 			continue
 		}
 
@@ -146,6 +162,8 @@ func getInterfaceNameByUDP() (*net.Interface, error) {
 			}
 		}
 	}
+
+	zap.L().Info("no interface found for local address", zap.String("local_ip", localAddr.IP.String()))
 
 	return nil, fmt.Errorf("interface not found for IP %s", localAddr.IP)
 }
